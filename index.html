@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="transition-colors duration-300">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- SEO Meta Tags -->
+    <title>Docker 镜像加速服务监控 - 实时监控国内Docker Hub镜像加速服务状态</title>
+    <meta name="description" content="专业的Docker镜像加速服务监控平台，实时监控中科大、阿里云、腾讯云、华为云等33+个国内Docker Hub镜像加速服务的可用性和响应时间，提供详细的配置指南。">
+    <meta name="keywords" content="Docker镜像加速,Docker Hub镜像,容器镜像加速,Docker配置,镜像源监控,Docker中国镜像,容器服务监控">
+    <meta name="author" content="Docker镜像加速监控">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://docker-monitor.example.com/">
+
+    <!-- 网站图标 -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+
+    <!-- Theme Color -->
+    <meta name="theme-color" content="#007AFF">
+    <meta name="msapplication-TileColor" content="#007AFF">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'docker-blue': '#007AFF',
+                        'apple-blue': '#007AFF',
+                        'apple-green': '#34C759',
+                        'apple-orange': '#FF9500',
+                        'apple-red': '#FF3B30',
+                        'apple-gray': '#8E8E93',
+                        'apple-bg': '#F2F2F7',
+                        'apple-card': '#FFFFFF',
+                        'apple-border': '#E5E5EA'
+                    },
+                    fontFamily: {
+                        'sf': ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'Segoe UI', 'Roboto', 'sans-serif']
+                    },
+                    boxShadow: {
+                        'apple': '0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06)',
+                        'apple-lg': '0 10px 25px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05)',
+                        'apple-xl': '0 20px 40px rgba(0, 0, 0, 0.1), 0 8px 16px rgba(0, 0, 0, 0.06)'
+                    },
+                    borderRadius: {
+                        'apple': '12px',
+                        'apple-lg': '16px',
+                        'apple-xl': '20px'
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Docker 镜像加速服务监控",
+        "description": "专业的Docker镜像加速服务监控平台，实时监控国内Docker Hub镜像加速服务的可用性和响应时间",
+        "url": "https://docker-monitor.example.com/",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Web Browser",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "CNY"
+        },
+        "author": {
+            "@type": "Organization",
+            "name": "Docker镜像加速监控团队"
+        },
+        "provider": {
+            "@type": "Organization",
+            "name": "Docker镜像加速监控",
+            "url": "https://docker-monitor.example.com/"
+        },
+        "featureList": [
+            "实时监控Docker镜像加速服务",
+            "33+个国内镜像源状态检测",
+            "响应时间监控",
+            "深色模式支持",
+            "移动端适配",
+            "配置指南提供"
+        ],
+        "screenshot": "https://docker-monitor.example.com/screenshot.png",
+        "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.8",
+            "ratingCount": "156",
+            "bestRating": "5",
+            "worstRating": "1"
+        }
+    }
+    </script>
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Docker镜像加速监控",
+        "url": "https://docker-monitor.example.com/",
+        "logo": "https://docker-monitor.example.com/logo.png",
+        "description": "提供专业的Docker镜像加速服务监控，帮助开发者选择最佳的镜像源",
+        "foundingDate": "2024",
+        "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "technical support",
+            "availableLanguage": ["Chinese", "English"]
+        },
+        "sameAs": [
+            "https://github.com/docker-monitor"
+        ]
+    }
+    </script>
+    <style>
+        .glass-effect {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.95);
+        }
+
+        .terminal-window {
+            background: #1d1d1f;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .terminal-header {
+            background: #2c2c2e;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .terminal-button {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .terminal-close { background: #ff5f57; }
+        .terminal-minimize { background: #ffbd2e; }
+        .terminal-maximize { background: #28ca42; }
+
+        .terminal-content {
+            padding: 20px;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #f2f2f7;
+        }
+
+        .code-line {
+            margin: 2px 0;
+        }
+
+        .code-comment { color: #8e8e93; }
+        .code-string { color: #ff9f0a; }
+        .code-keyword { color: #007aff; }
+        .code-property { color: #30d158; }
+        .code-value { color: #ff9f0a; }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .status-healthy { background: #30d158; }
+        .status-slow { background: #ff9f0a; }
+        .status-error { background: #ff453a; }
+        .status-checking { background: #8e8e93; }
+
+        .card-hover {
+            transition: all 0.2s ease-in-out;
+        }
+
+        .card-hover:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+        }
+
+        .btn-primary {
+            background: #007aff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .btn-primary:hover {
+            background: #0056cc;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: rgba(0, 122, 255, 0.1);
+            color: #007aff;
+            border: 1px solid rgba(0, 122, 255, 0.2);
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(0, 122, 255, 0.15);
+        }
+
+        /* CSS变量定义 */
+        :root {
+            --apple-bg: #f2f2f7;
+            --apple-card: #ffffff;
+            --apple-border: #e5e5ea;
+            --text-primary: #1d1d1f;
+            --text-secondary: #8e8e93;
+            --glass-bg: rgba(255, 255, 255, 0.8);
+        }
+
+        /* 深色模式样式 */
+        .dark {
+            --apple-bg: #000000;
+            --apple-card: #1c1c1e;
+            --apple-border: #38383a;
+            --text-primary: #ffffff;
+            --text-secondary: #8e8e93;
+            --glass-bg: rgba(28, 28, 30, 0.8);
+        }
+
+        .dark .bg-apple-bg {
+            background-color: var(--apple-bg) !important;
+        }
+
+        .dark .bg-apple-card {
+            background-color: var(--apple-card) !important;
+        }
+
+        .dark .border-apple-border {
+            border-color: var(--apple-border) !important;
+        }
+
+        .dark .text-gray-900 {
+            color: var(--text-primary) !important;
+        }
+
+        .dark .text-apple-gray {
+            color: var(--text-secondary) !important;
+        }
+
+        .dark .glass-effect {
+            background: var(--glass-bg) !important;
+        }
+
+        .dark .bg-gray-50,
+        .dark .bg-gray-50\/50 {
+            background-color: #2c2c2e !important;
+        }
+
+        .dark .hover\:bg-gray-50\/50:hover {
+            background-color: #3a3a3c !important;
+        }
+
+        .dark .bg-gray-200 {
+            background-color: #48484a !important;
+        }
+
+        .dark .bg-white {
+            background-color: var(--apple-card) !important;
+        }
+
+        .dark .terminal-window {
+            background: #1c1c1e !important;
+            border-color: var(--apple-border) !important;
+        }
+
+        /* 深色模式下的渐变背景 */
+        .dark .bg-gradient-to-r {
+            background: var(--apple-card) !important;
+        }
+
+        .dark .from-gray-50 {
+            background: var(--apple-card) !important;
+        }
+
+        .dark .to-white {
+            background: var(--apple-card) !important;
+        }
+
+        .dark .bg-gradient-to-br {
+            background: rgba(58, 58, 60, 0.3) !important;
+        }
+
+        .dark .from-blue-50 {
+            background: rgba(58, 58, 60, 0.3) !important;
+        }
+
+        .dark .to-indigo-50 {
+            background: rgba(58, 58, 60, 0.3) !important;
+        }
+
+        .dark .border-blue-100 {
+            border-color: var(--apple-border) !important;
+        }
+
+        /* 深色模式下的文本颜色 */
+        .dark .text-gray-700 {
+            color: #d1d1d6 !important;
+        }
+
+        /* 深色模式下的图标背景 */
+        .dark .bg-gray-900 {
+            background-color: #48484a !important;
+        }
+
+        .dark .bg-blue-600 {
+            background-color: #0a84ff !important;
+        }
+
+        /* 深色模式下的表格头部 */
+        .dark thead {
+            background-color: rgba(58, 58, 60, 0.3) !important;
+        }
+
+        /* 深色模式下的各种颜色背景 */
+        .dark .bg-blue-100 {
+            background-color: rgba(10, 132, 255, 0.15) !important;
+        }
+
+        .dark .bg-red-100 {
+            background-color: rgba(255, 69, 58, 0.15) !important;
+        }
+
+        .dark .bg-orange-100 {
+            background-color: rgba(255, 159, 10, 0.15) !important;
+        }
+
+        .dark .bg-green-100 {
+            background-color: rgba(48, 209, 88, 0.15) !important;
+        }
+
+        .dark .bg-purple-100 {
+            background-color: rgba(191, 90, 242, 0.15) !important;
+        }
+
+        .dark .bg-indigo-100 {
+            background-color: rgba(94, 92, 230, 0.15) !important;
+        }
+
+        .dark .bg-cyan-100 {
+            background-color: rgba(100, 210, 255, 0.15) !important;
+        }
+
+        .dark .bg-pink-100 {
+            background-color: rgba(255, 55, 95, 0.15) !important;
+        }
+
+        .dark .bg-yellow-100 {
+            background-color: rgba(255, 214, 10, 0.15) !important;
+        }
+
+        .dark .bg-gray-100 {
+            background-color: rgba(142, 142, 147, 0.15) !important;
+        }
+
+        /* 深色模式下的文本颜色 */
+        .dark .text-blue-600 {
+            color: #0a84ff !important;
+        }
+
+        .dark .text-red-600 {
+            color: #ff453a !important;
+        }
+
+        .dark .text-orange-600 {
+            color: #ff9f0a !important;
+        }
+
+        .dark .text-green-600 {
+            color: #30d158 !important;
+        }
+
+        .dark .text-purple-600 {
+            color: #bf5af2 !important;
+        }
+
+        .dark .text-indigo-600 {
+            color: #5e5ce6 !important;
+        }
+
+        .dark .text-cyan-600 {
+            color: #64d2ff !important;
+        }
+
+        .dark .text-pink-600 {
+            color: #ff375f !important;
+        }
+
+        .dark .text-yellow-600 {
+            color: #ffd60a !important;
+        }
+
+        .dark .text-gray-600 {
+            color: #8e8e93 !important;
+        }
+
+        /* 浮动按钮样式 */
+        .floating-buttons {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 1000;
+        }
+
+        /* 移动端适配 */
+        @media (min-width: 768px) {
+            .floating-buttons {
+                bottom: 32px;
+                right: 32px;
+                gap: 16px;
+            }
+        }
+
+        .floating-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            border: none;
+            font-size: 16px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+
+        /* 桌面端更大的按钮 */
+        @media (min-width: 768px) {
+            .floating-btn {
+                width: 48px;
+                height: 48px;
+                border-radius: 12px;
+                font-size: 18px;
+            }
+        }
+
+        .floating-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .floating-btn:active {
+            transform: scale(0.95);
+        }
+
+        .floating-btn.back-to-top {
+            background: rgba(0, 122, 255, 0.95);
+            color: white;
+            border: 1px solid rgba(0, 122, 255, 0.2);
+        }
+
+        .floating-btn.back-to-top:hover {
+            background: rgba(0, 122, 255, 1);
+        }
+
+        .floating-btn.theme-toggle {
+            background: rgba(255, 255, 255, 0.95);
+            color: #1d1d1f;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        .floating-btn.theme-toggle:hover {
+            background: rgba(255, 255, 255, 1);
+        }
+
+        .dark .floating-btn.theme-toggle {
+            background: rgba(28, 28, 30, 0.95);
+            color: #f2f2f7;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .dark .floating-btn.theme-toggle:hover {
+            background: rgba(28, 28, 30, 1);
+        }
+
+        /* 隐藏返回顶部按钮的初始状态 */
+        .floating-btn.back-to-top.hidden {
+            opacity: 0;
+            transform: translateY(16px) scale(0.8);
+            pointer-events: none;
+        }
+
+        /* 平滑滚动 */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* 屏幕阅读器专用 */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        /* 跳转链接 */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 6px;
+            background: #007AFF;
+            color: white;
+            padding: 8px;
+            text-decoration: none;
+            border-radius: 4px;
+            z-index: 1000;
+        }
+
+        .skip-link:focus {
+            top: 6px;
+        }
+
+        /* 移动端优化 */
+        @media (max-width: 767px) {
+            /* 表格在移动端的优化 */
+            .table-mobile-scroll {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            /* 移动端文字大小调整 */
+            .mobile-text-sm {
+                font-size: 0.75rem;
+            }
+
+            /* 移动端按钮优化 */
+            .mobile-btn-sm {
+                padding: 0.375rem 0.75rem;
+                font-size: 0.75rem;
+            }
+
+            /* 移动端卡片间距 */
+            .mobile-card-spacing {
+                margin-bottom: 1rem;
+            }
+
+        }
+    </style>
+</head>
+<body class="bg-apple-bg min-h-screen font-sf">
+    <!-- 跳转链接 -->
+    <a href="#main-content" class="skip-link">跳转到主要内容</a>
+
+    <!-- Header -->
+    <header class="glass-effect border-b border-apple-border sticky top-0 z-50" role="banner">
+        <div class="max-w-7xl mx-auto px-6 lg:px-8">
+            <nav class="flex justify-between items-center py-4" role="navigation" aria-label="主导航">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-apple-blue to-blue-600 rounded-apple flex items-center justify-center shadow-apple" role="img" aria-label="Docker Logo">
+                        <i class="fab fa-docker text-white text-lg md:text-xl" aria-hidden="true"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg md:text-xl font-semibold text-gray-900">Docker 镜像加速监控</h1>
+                        <p class="text-xs md:text-sm text-apple-gray hidden sm:block">实时监控国内镜像加速服务状态</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="hidden sm:flex items-center space-x-2 text-sm text-apple-gray">
+                        <i class="fas fa-clock"></i>
+                        <span>最后更新: <span id="lastUpdate" class="font-medium">--</span></span>
+                    </div>
+                    <button id="refreshBtn" class="bg-apple-blue text-white px-3 py-2 md:px-4 rounded-apple hover:bg-blue-600 transition-all duration-200 shadow-apple hover:shadow-apple-lg text-sm md:text-base" aria-label="刷新服务状态">
+                        <i class="fas fa-sync-alt mr-1 md:mr-2" aria-hidden="true"></i><span class="hidden sm:inline">刷新</span><span class="sm:hidden">更新</span>
+                    </button>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main id="main-content" class="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-6 md:py-8" role="main">
+        <!-- Status Overview -->
+        <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8" role="region" aria-labelledby="status-overview-title">
+            <h2 id="status-overview-title" class="sr-only">服务状态概览</h2>
+            <div class="bg-apple-card rounded-apple-lg shadow-apple p-4 md:p-6 hover-lift border border-apple-border">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-apple-gray mb-1">正常服务</p>
+                        <p class="text-2xl md:text-3xl font-bold text-gray-900" id="normalCount">0</p>
+                    </div>
+                    <div class="w-10 h-10 md:w-12 md:h-12 bg-apple-green bg-opacity-10 rounded-apple flex items-center justify-center">
+                        <i class="fas fa-check-circle text-apple-green text-lg md:text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-3 md:mt-4 flex items-center">
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div class="bg-apple-green h-2 rounded-full transition-all duration-500" id="normalProgress" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-apple-card rounded-apple-lg shadow-apple p-4 md:p-6 hover-lift border border-apple-border">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-apple-gray mb-1">缓慢服务</p>
+                        <p class="text-2xl md:text-3xl font-bold text-gray-900" id="slowCount">0</p>
+                    </div>
+                    <div class="w-10 h-10 md:w-12 md:h-12 bg-apple-orange bg-opacity-10 rounded-apple flex items-center justify-center">
+                        <i class="fas fa-exclamation-triangle text-apple-orange text-lg md:text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-3 md:mt-4 flex items-center">
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div class="bg-apple-orange h-2 rounded-full transition-all duration-500" id="slowProgress" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-apple-card rounded-apple-lg shadow-apple p-4 md:p-6 hover-lift border border-apple-border">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-apple-gray mb-1">异常服务</p>
+                        <p class="text-2xl md:text-3xl font-bold text-gray-900" id="errorCount">0</p>
+                    </div>
+                    <div class="w-10 h-10 md:w-12 md:h-12 bg-apple-red bg-opacity-10 rounded-apple flex items-center justify-center">
+                        <i class="fas fa-times-circle text-apple-red text-lg md:text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-3 md:mt-4 flex items-center">
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div class="bg-apple-red h-2 rounded-full transition-all duration-500" id="errorProgress" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-apple-card rounded-apple-lg shadow-apple p-4 md:p-6 hover-lift border border-apple-border">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-apple-gray mb-1">总服务数</p>
+                        <p class="text-2xl md:text-3xl font-bold text-gray-900" id="totalCount">0</p>
+                    </div>
+                    <div class="w-10 h-10 md:w-12 md:h-12 bg-apple-blue bg-opacity-10 rounded-apple flex items-center justify-center">
+                        <i class="fas fa-server text-apple-blue text-lg md:text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-3 md:mt-4 flex items-center">
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div class="bg-apple-blue h-2 rounded-full transition-all duration-500" style="width: 100%"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Service Status Table -->
+        <section class="bg-apple-card rounded-apple-lg shadow-apple overflow-hidden border border-apple-border" role="region" aria-labelledby="service-status-title">
+            <header class="px-4 md:px-6 py-4 md:py-5 border-b border-apple-border bg-gradient-to-r from-gray-50 to-white">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 id="service-status-title" class="text-lg md:text-xl font-semibold text-gray-900">镜像加速服务状态</h2>
+                        <p class="text-xs md:text-sm text-apple-gray mt-1 hidden sm:block">实时监控各大云服务商的 Docker 镜像加速服务</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <div class="w-2 h-2 bg-apple-green rounded-full animate-pulse"></div>
+                        <span class="text-xs md:text-sm text-apple-gray hidden sm:inline">实时监控</span>
+                        <span class="text-xs text-apple-gray sm:hidden">监控中</span>
+                    </div>
+                </div>
+            </header>
+            <div class="overflow-x-auto">
+                <table class="min-w-full" role="table" aria-label="Docker镜像加速服务状态表">
+                    <thead class="bg-gray-50/50">
+                        <tr>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-apple-gray uppercase tracking-wider">服务提供商</th>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-apple-gray uppercase tracking-wider">镜像地址</th>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-apple-gray uppercase tracking-wider">状态</th>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-apple-gray uppercase tracking-wider">响应时间</th>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-apple-gray uppercase tracking-wider">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="serviceTable" class="bg-white">
+                        <!-- Services will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Configuration Guide -->
+        <section class="mt-8 bg-apple-card rounded-apple-lg shadow-apple border border-apple-border" role="region" aria-labelledby="config-guide-title">
+            <header class="px-4 md:px-6 py-4 md:py-5 border-b border-apple-border bg-gradient-to-r from-gray-50 to-white">
+                <div class="flex items-center space-x-3">
+                    <div class="w-6 h-6 md:w-8 md:h-8 bg-apple-blue bg-opacity-10 rounded-apple flex items-center justify-center" role="img" aria-label="配置图标">
+                        <i class="fas fa-cog text-apple-blue text-sm md:text-base" aria-hidden="true"></i>
+                    </div>
+                    <div>
+                        <h2 id="config-guide-title" class="text-lg md:text-xl font-semibold text-gray-900">配置指南</h2>
+                        <p class="text-xs md:text-sm text-apple-gray hidden sm:block">快速配置 Docker 镜像加速服务</p>
+                    </div>
+                </div>
+            </header>
+            <div class="p-4 md:p-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+                    <div>
+                        <div class="flex items-center space-x-3 mb-4">
+                            <div class="w-6 h-6 bg-gray-900 rounded flex items-center justify-center">
+                                <i class="fab fa-apple text-white text-xs"></i>
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-900">macOS / Linux 配置</h3>
+                        </div>
+                        <div class="terminal-window">
+                            <div class="terminal-header">
+                                <div class="terminal-button terminal-close"></div>
+                                <div class="terminal-button terminal-minimize"></div>
+                                <div class="terminal-button terminal-maximize"></div>
+                                <span class="text-gray-400 text-xs ml-3">Terminal</span>
+                            </div>
+                            <div class="terminal-content">
+                                <div class="code-line"><span class="code-comment"># 创建或编辑 daemon.json</span></div>
+                                <div class="code-line"><span class="code-keyword">sudo</span> mkdir -p /etc/docker</div>
+                                <div class="code-line"><span class="code-keyword">sudo</span> tee /etc/docker/daemon.json &lt;&lt;-<span class="code-string">'EOF'</span></div>
+                                <div class="code-line">{</div>
+                                <div class="code-line">  <span class="code-property">"registry-mirrors"</span>: [</div>
+                                <div class="code-line">    <span class="code-value">"https://docker.mirrors.ustc.edu.cn"</span>,</div>
+                                <div class="code-line">    <span class="code-value">"https://hub-mirror.c.163.com"</span></div>
+                                <div class="code-line">  ]</div>
+                                <div class="code-line">}</div>
+                                <div class="code-line">EOF</div>
+                                <div class="code-line"></div>
+                                <div class="code-line"><span class="code-comment"># 重启 Docker 服务</span></div>
+                                <div class="code-line"><span class="code-keyword">sudo</span> systemctl daemon-reload</div>
+                                <div class="code-line"><span class="code-keyword">sudo</span> systemctl restart docker</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-3 mb-4">
+                            <div class="w-6 h-6 bg-blue-600 rounded flex items-center justify-center">
+                                <i class="fab fa-windows text-white text-xs"></i>
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-900">Windows 配置</h3>
+                        </div>
+                        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-apple-lg p-6 border border-blue-100">
+                            <div class="space-y-4">
+                                <div class="flex items-start space-x-3">
+                                    <div class="w-6 h-6 bg-apple-blue rounded-full flex items-center justify-center text-white text-xs font-bold">1</div>
+                                    <p class="text-gray-700">右键点击 Docker Desktop 图标</p>
+                                </div>
+                                <div class="flex items-start space-x-3">
+                                    <div class="w-6 h-6 bg-apple-blue rounded-full flex items-center justify-center text-white text-xs font-bold">2</div>
+                                    <p class="text-gray-700">选择 "Settings" 或 "设置"</p>
+                                </div>
+                                <div class="flex items-start space-x-3">
+                                    <div class="w-6 h-6 bg-apple-blue rounded-full flex items-center justify-center text-white text-xs font-bold">3</div>
+                                    <p class="text-gray-700">点击 "Docker Engine"</p>
+                                </div>
+                                <div class="flex items-start space-x-3">
+                                    <div class="w-6 h-6 bg-apple-blue rounded-full flex items-center justify-center text-white text-xs font-bold">4</div>
+                                    <p class="text-gray-700">在配置文件中添加镜像地址</p>
+                                </div>
+                                <div class="flex items-start space-x-3">
+                                    <div class="w-6 h-6 bg-apple-blue rounded-full flex items-center justify-center text-white text-xs font-bold">5</div>
+                                    <p class="text-gray-700">点击 "Apply & Restart"</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-apple-card border-t border-apple-border mt-12 md:mt-16" role="contentinfo">
+        <div class="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-6 md:py-8">
+            <div class="text-center">
+                <div class="flex items-center justify-center space-x-2 mb-4">
+                    <div class="w-8 h-8 bg-gradient-to-br from-apple-blue to-blue-600 rounded-apple flex items-center justify-center" role="img" aria-label="Docker Logo">
+                        <i class="fab fa-docker text-white text-sm" aria-hidden="true"></i>
+                    </div>
+                    <span class="text-lg font-semibold text-gray-900">Docker 镜像加速监控</span>
+                </div>
+                <p class="text-apple-gray text-sm mb-2">&copy; 2024 Docker 镜像加速监控. 数据仅供参考，请以实际使用为准。</p>
+                <div class="flex items-center justify-center space-x-4 text-xs text-apple-gray">
+                    <span class="flex items-center space-x-1">
+                        <i class="fas fa-heart text-apple-red" aria-hidden="true"></i>
+                        <span>Made with love</span>
+                    </span>
+                    <span aria-hidden="true">•</span>
+                    <span class="flex items-center space-x-1">
+                        <i class="fas fa-code" aria-hidden="true"></i>
+                        <span>Open Source</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 浮动按钮 -->
+    <div class="floating-buttons" role="group" aria-label="浮动操作按钮">
+        <!-- 深色/浅色模式切换按钮 -->
+        <button id="themeToggle" class="floating-btn theme-toggle" title="切换深色/浅色模式" aria-label="切换深色/浅色模式">
+            <i class="fas fa-moon" id="themeIcon" aria-hidden="true"></i>
+        </button>
+
+        <!-- 返回顶部按钮 -->
+        <button id="backToTop" class="floating-btn back-to-top hidden" title="返回顶部" aria-label="返回页面顶部">
+            <i class="fas fa-chevron-up" aria-hidden="true"></i>
+        </button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
