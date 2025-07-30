@@ -253,37 +253,76 @@ function initializeServices() {
 // 检查单个服务状态
 async function checkServiceStatus(service) {
     const startTime = Date.now();
-    
+
     try {
-        // 使用 fetch 检查服务可用性
-        // 注意：由于 CORS 限制，这里模拟检查结果
-        // 在实际部署中，需要后端 API 来检查服务状态
-        
-        // 模拟网络延迟和随机状态
-        const delay = Math.random() * 2000 + 500; // 500-2500ms
-        await new Promise(resolve => setTimeout(resolve, delay));
-        
+        // 方法1: 尝试使用公共CORS代理
+        let testUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(service.url + '/v2/')}`;
+
+        // 设置请求超时
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+        try {
+            const response = await fetch(testUrl, {
+                method: 'GET',
+                signal: controller.signal,
+                cache: 'no-cache'
+            });
+
+            clearTimeout(timeoutId);
+            const responseTime = Date.now() - startTime;
+
+            if (response.ok) {
+                serviceStatus[service.url] = {
+                    status: responseTime > 3000 ? 'slow' : 'healthy',
+                    responseTime: responseTime,
+                    lastCheck: new Date()
+                };
+                return;
+            }
+        } catch (proxyError) {
+            console.log(`代理检测失败: ${service.name}`, proxyError.message);
+        }
+
+        // 方法2: 备用检测 - 直接访问 (可能受CORS限制)
+        clearTimeout(timeoutId);
+        const controller2 = new AbortController();
+        const timeoutId2 = setTimeout(() => controller2.abort(), 8000);
+
+        await fetch(service.url + '/v2/', {
+            method: 'HEAD',
+            mode: 'no-cors',
+            signal: controller2.signal,
+            cache: 'no-cache'
+        });
+
+        clearTimeout(timeoutId2);
         const responseTime = Date.now() - startTime;
-        const isHealthy = Math.random() > 0.1; // 90% 成功率
-        
-        if (isHealthy) {
+
+        // 如果没有抛出错误，认为服务可达
+        serviceStatus[service.url] = {
+            status: responseTime > 3000 ? 'slow' : 'healthy',
+            responseTime: responseTime,
+            lastCheck: new Date()
+        };
+
+    } catch (error) {
+        const responseTime = Date.now() - startTime;
+
+        // 根据错误类型判断状态
+        if (error.name === 'AbortError') {
             serviceStatus[service.url] = {
-                status: responseTime > 2000 ? 'slow' : 'healthy',
-                responseTime: responseTime,
-                uptime: Math.random() * 100,
+                status: 'slow',
+                responseTime: responseTime > 10000 ? 10000 : responseTime,
                 lastCheck: new Date()
             };
         } else {
-            throw new Error('Service unavailable');
+            serviceStatus[service.url] = {
+                status: 'error',
+                responseTime: 0,
+                lastCheck: new Date()
+            };
         }
-        
-    } catch (error) {
-        serviceStatus[service.url] = {
-            status: 'error',
-            responseTime: 0,
-            uptime: 0,
-            lastCheck: new Date()
-        };
     }
 }
 
@@ -314,7 +353,6 @@ function createServiceRow(service, status) {
 
     const statusInfo = getStatusInfo(status.status);
     const responseTimeText = status.responseTime > 0 ? `${status.responseTime}ms` : '--';
-    const uptimeText = status.uptime > 0 ? `${status.uptime.toFixed(1)}%` : '--';
 
     // 获取提供商图标
     const providerIcon = getProviderIcon(service.provider);
@@ -528,7 +566,7 @@ function showNotification(message, type = 'info') {
 }
 
 // 获取通知样式类
-function getNotificationClass(type) {
+function getNotificationClass() {
     return 'bg-white border border-apple-border';
 }
 
