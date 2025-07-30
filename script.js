@@ -252,82 +252,89 @@ function initializeServices() {
 
 // 检查单个服务状态
 async function checkServiceStatus(service) {
-    const startTime = Date.now();
-
     try {
-        // 方法1: 尝试使用公共CORS代理
-        let testUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(service.url + '/v2/')}`;
-
-        // 设置请求超时
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-        try {
-            const response = await fetch(testUrl, {
-                method: 'GET',
-                signal: controller.signal,
-                cache: 'no-cache'
-            });
-
-            clearTimeout(timeoutId);
-            const responseTime = Date.now() - startTime;
-
-            if (response.ok) {
-                serviceStatus[service.url] = {
-                    status: responseTime > 3000 ? 'slow' : 'healthy',
-                    responseTime: responseTime,
-                    lastCheck: new Date()
-                };
-                return;
-            }
-        } catch (proxyError) {
-            console.log(`代理检测失败: ${service.name}`, proxyError.message);
-        }
-
-        // 方法2: 备用检测 - 直接访问 (可能受CORS限制)
-        clearTimeout(timeoutId);
-        const controller2 = new AbortController();
-        const timeoutId2 = setTimeout(() => controller2.abort(), 8000);
-
-        await fetch(service.url + '/v2/', {
-            method: 'HEAD',
-            mode: 'no-cors',
-            signal: controller2.signal,
-            cache: 'no-cache'
+        const response = await fetch('./backend/api/check-service.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ url: service.url })
         });
 
-        clearTimeout(timeoutId2);
-        const responseTime = Date.now() - startTime;
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
 
-        // 如果没有抛出错误，认为服务可达
+        const result = await response.json();
+
         serviceStatus[service.url] = {
-            status: responseTime > 3000 ? 'slow' : 'healthy',
-            responseTime: responseTime,
-            lastCheck: new Date()
+            status: result.status,
+            responseTime: result.responseTime,
+            uptime: result.uptime || 0,
+            lastCheck: new Date(result.lastCheck),
+            error: result.error || null
         };
 
     } catch (error) {
-        const responseTime = Date.now() - startTime;
-
-        // 根据错误类型判断状态
-        if (error.name === 'AbortError') {
-            serviceStatus[service.url] = {
-                status: 'slow',
-                responseTime: responseTime > 10000 ? 10000 : responseTime,
-                lastCheck: new Date()
-            };
-        } else {
-            serviceStatus[service.url] = {
-                status: 'error',
-                responseTime: 0,
-                lastCheck: new Date()
-            };
-        }
+        console.error(`Error checking ${service.name}:`, error);
+        serviceStatus[service.url] = {
+            status: 'error',
+            responseTime: 0,
+            uptime: 0,
+            lastCheck: new Date(),
+            error: error.message
+        };
     }
 }
 
-// 检查所有服务
+// 检查所有服务 - 优化版本，使用批量API
 async function checkAllServices() {
+    try {
+        // 尝试使用批量检测API
+        const response = await fetch('./backend/api/check-all.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                timeout: 10,
+                use_cache: true
+            })
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+
+            if (result.success) {
+                // 更新服务状态
+                result.data.forEach(serviceData => {
+                    serviceStatus[serviceData.url] = {
+                        status: serviceData.status,
+                        responseTime: serviceData.responseTime,
+                        uptime: 99.9, // 可以从后端获取历史数据
+                        lastCheck: new Date(serviceData.timestamp),
+                        httpCode: serviceData.httpCode,
+                        error: serviceData.error || null
+                    };
+                });
+
+                renderServiceTable();
+                updateStatusCounts();
+
+                // 显示缓存状态
+                if (result.cached) {
+                    console.log('使用缓存数据，缓存时间:', result.cache_time);
+                } else {
+                    console.log(`检测完成，耗时: ${result.check_time_ms}ms`);
+                }
+                return;
+            }
+        }
+    } catch (error) {
+        console.warn('批量API失败，回退到单个检测:', error);
+    }
+
+    // 回退到单个检测
     const promises = dockerServices.map(service => checkServiceStatus(service));
     await Promise.all(promises);
     renderServiceTable();
@@ -353,6 +360,7 @@ function createServiceRow(service, status) {
 
     const statusInfo = getStatusInfo(status.status);
     const responseTimeText = status.responseTime > 0 ? `${status.responseTime}ms` : '--';
+    const uptimeText = status.uptime > 0 ? `${status.uptime.toFixed(1)}%` : '--';
 
     // 获取提供商图标
     const providerIcon = getProviderIcon(service.provider);
@@ -566,7 +574,7 @@ function showNotification(message, type = 'info') {
 }
 
 // 获取通知样式类
-function getNotificationClass() {
+function getNotificationClass(type) {
     return 'bg-white border border-apple-border';
 }
 

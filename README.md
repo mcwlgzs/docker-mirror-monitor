@@ -51,26 +51,38 @@
 ## 🚀 快速开始
 
 ### 环境要求
+
+#### 前端要求
 - 现代浏览器（Chrome、Firefox、Safari、Edge）
 - 支持 ES6+ 的 JavaScript 环境
 
+#### 后端要求
+- **PHP**: 7.4+ (推荐 8.0+)
+- **Web服务器**: Apache 2.4+ 或 Nginx 1.18+
+- **PHP扩展**: curl, json, mbstring
+
 ### 部署方式
 
-#### 1. 直接部署
+#### 1. 完整部署（推荐）
 ```bash
 # 克隆项目
-git clone <repository-url>
+git clone https://github.com/mcwlgzs/docker-mirror-monitor.git
 cd docker-mirror-monitor
 
-# 使用任意 HTTP 服务器运行
-# 方式一：使用 Python
+# 设置目录权限
+chmod 755 backend/
+chmod 777 backend/cache/ backend/logs/
+
+# 配置Web服务器（Apache/Nginx）
+# 详见 DEPLOYMENT.md 文档
+```
+
+#### 2. 仅前端部署（演示模式）
+```bash
+# 使用任意 HTTP 服务器运行前端
 python -m http.server 8000
-
-# 方式二：使用 Node.js
+# 或
 npx serve .
-
-# 方式三：使用 PHP
-php -S localhost:8000
 ```
 
 #### 2. Nginx 部署
@@ -145,11 +157,19 @@ sudo systemctl restart docker
 
 ## 💻 技术栈
 
+### 前端技术
 - **前端框架**: 原生 HTML5 + CSS3 + JavaScript (ES6+)
 - **CSS 框架**: Tailwind CSS (CDN)
 - **图标库**: Font Awesome 6.0
 - **字体**: SF Pro Display (Apple 系统字体)
 - **设计风格**: Apple Design Language
+
+### 后端技术
+- **后端语言**: PHP 7.4+ (推荐 8.0+)
+- **Web服务器**: Apache/Nginx
+- **API架构**: RESTful API
+- **缓存机制**: 文件缓存系统
+- **并发处理**: cURL Multi Handle
 
 ## 🎨 设计特色
 
@@ -185,21 +205,15 @@ sudo systemctl restart docker
 ```javascript
 // 检查单个服务状态
 async function checkServiceStatus(service) {
-    // 使用公共CORS代理进行真实检测
-    // 备用方案：直接访问（no-cors模式）
+    // 实际部署时需要后端 API 支持
+    // 当前为模拟数据，避免 CORS 限制
 }
 ```
 
-**检测机制**:
-1. **主要方案**: 使用 `allorigins.win` 公共CORS代理服务进行真实检测
-2. **备用方案**: 直接访问服务端点（no-cors模式）
-3. **超时处理**: 10秒超时，避免长时间等待
-4. **错误分类**: 区分网络错误、超时和服务异常
-
-**状态判断标准**:
-- 🟢 **正常**: 响应时间 < 3秒且服务可达
-- 🟡 **缓慢**: 响应时间 ≥ 3秒或请求超时
-- 🔴 **异常**: 网络错误或服务不可达
+**注意**: 由于浏览器 CORS 限制，当前版本使用模拟数据。在生产环境中，建议：
+1. 部署后端 API 服务进行实际检测
+2. 使用服务器端渲染 (SSR)
+3. 配置代理服务器绕过 CORS 限制
 
 ## 🛠️ 自定义配置
 
