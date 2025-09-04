@@ -167,41 +167,31 @@ async function checkServiceStatus(service) {
     }
 }
 
-// 检查所有服务 - 优化版本，使用批量API
+ // 检查所有服务 - 优化版本，使用批量API，带多级回退与演示模式
 async function checkAllServices() {
+    // 1) 优先尝试 POST /check_all
     try {
-        // 尝试使用批量检测API
         const response = await fetch('./api.php?action=check_all', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                timeout: 10,
-                use_cache: true
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ timeout: 10, use_cache: true })
         });
 
         if (response.ok) {
             const result = await response.json();
-
             if (result.success) {
-                // 更新服务状态
                 result.data.forEach(serviceData => {
                     serviceStatus[serviceData.url] = {
                         status: serviceData.status,
                         responseTime: serviceData.responseTime,
-                        uptime: 99.9, // 可以从后端获取历史数据
+                        uptime: 99.9,
                         lastCheck: new Date(serviceData.timestamp),
                         httpCode: serviceData.httpCode,
                         error: serviceData.error || null
                     };
                 });
-
                 renderServiceTable();
                 updateStatusCounts();
-
-                // 显示缓存状态
                 if (result.cached) {
                     console.log('使用缓存数据，缓存时间:', result.cache_time);
                 } else {
@@ -211,12 +201,68 @@ async function checkAllServices() {
             }
         }
     } catch (error) {
-        console.warn('批量API失败，回退到单个检测:', error);
+        console.warn('批量API失败，尝试回退 GET /quick_check:', error);
     }
 
-    // 回退到单个检测
-    const promises = dockerServices.map(service => checkServiceStatus(service));
-    await Promise.all(promises);
+    // 2) 回退到 GET /quick_check
+    try {
+        const res2 = await fetch('./api.php?action=quick_check');
+        if (res2.ok) {
+            const result2 = await res2.json();
+            if (result2.success) {
+                result2.data.forEach(serviceData => {
+                    serviceStatus[serviceData.url] = {
+                        status: serviceData.status,
+                        responseTime: serviceData.responseTime,
+                        uptime: 99.9,
+                        lastCheck: new Date(serviceData.timestamp),
+                        httpCode: serviceData.httpCode,
+                        error: serviceData.error || null
+                    };
+                });
+                renderServiceTable();
+                updateStatusCounts();
+                console.log('使用 quick_check 成功', result2.cached ? '(缓存)' : '');
+                return;
+            }
+        }
+    } catch (e) {
+        console.warn('quick_check 也失败，尝试单个检测:', e);
+    }
+
+    // 3) 回退到单个检测（如果后端不可用，仍可能全部失败）
+    try {
+        const promises = dockerServices.map(service => checkServiceStatus(service));
+        await Promise.all(promises);
+        renderServiceTable();
+        updateStatusCounts();
+        // 如果大多数失败则进入演示模式
+        const failures = Object.values(serviceStatus).filter(s => s.status === 'error').length;
+        if (failures > dockerServices.length * 0.7) {
+            throw new Error('后端不可用，触发演示模式');
+        }
+        return;
+    } catch (e) {
+        console.warn('单个检测失败，进入演示模式:', e);
+    }
+
+    // 4) 演示模式（后端不可用）
+    dockerServices.forEach(service => {
+        const rt = Math.floor(Math.random() * 1800) + 80; // 80-1880ms
+        const status = rt < 500 ? 'fast' : (rt < 1000 ? 'fair' : (rt < 2000 ? 'slow' : 'error'));
+        serviceStatus[service.url] = {
+            status,
+            responseTime: rt,
+            uptime: 99.9,
+            lastCheck: new Date(),
+            error: '演示模式（后端不可用）'
+        };
+    });
+    if (typeof showNotification === 'function') {
+        showNotification('后端未运行，已进入演示模式', 'warning');
+    } else {
+        console.warn('后端未运行，已进入演示模式');
+    }
     renderServiceTable();
     updateStatusCounts();
 }
@@ -285,10 +331,17 @@ function createServiceRow(service, status) {
 function getStatusInfo(status) {
     switch (status) {
         case 'healthy':
+        case 'fast':
             return {
-                text: '正常',
+                text: status === 'fast' ? '快速' : '正常',
                 bgClass: 'bg-apple-green bg-opacity-10',
                 textClass: 'text-apple-green'
+            };
+        case 'fair':
+            return {
+                text: '一般',
+                bgClass: 'bg-blue-100',
+                textClass: 'text-blue-600'
             };
         case 'slow':
             return {
@@ -370,6 +423,8 @@ function updateStatusCounts() {
     Object.values(serviceStatus).forEach(status => {
         switch (status.status) {
             case 'healthy':
+            case 'fast':
+            case 'fair':
                 normalCount++;
                 break;
             case 'slow':

@@ -130,10 +130,12 @@ function checkDockerService($url, $timeout = 3) {
                 $result['error'] = $pingResult['error'];
             }
 
-            // 完全基于响应时间判断状态
-            if ($pingResult['responseTime'] > 200) {
+            // 完全基于响应时间判断状态 - 映射为前端兼容格式
+            if ($pingResult['responseTime'] > 2000) {
+                $result['status'] = 'error';
+            } elseif ($pingResult['responseTime'] > 1000) {
                 $result['status'] = 'slow';
-            } elseif ($pingResult['responseTime'] > 100) {
+            } elseif ($pingResult['responseTime'] > 500) {
                 $result['status'] = 'fair';
             } else {
                 $result['status'] = 'fast';
@@ -362,7 +364,10 @@ try {
             $stats = ['total' => 0, 'fast' => 0, 'fair' => 0, 'slow' => 0, 'error' => 0];
             foreach ($results as $result) {
                 $stats['total']++;
-                $stats[$result['status']]++;
+                $status = $result['status'];
+                if (isset($stats[$status])) {
+                    $stats[$status]++;
+                }
             }
 
             $response = [
