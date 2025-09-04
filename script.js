@@ -1,16 +1,10 @@
-// Docker 镜像加速服务配置
+// Docker 镜像加速服务配置 - 仅保留可用的镜像源
 const dockerServices = [
     {
         name: '中科大镜像站',
         url: 'https://docker.mirrors.ustc.edu.cn',
         provider: 'USTC',
         description: '中国科学技术大学开源软件镜像站'
-    },
-    {
-        name: '网易云镜像',
-        url: 'https://hub-mirror.c.163.com',
-        provider: '网易云',
-        description: '网易云提供的 Docker Hub 镜像'
     },
     {
         name: '阿里云镜像',
@@ -31,70 +25,16 @@ const dockerServices = [
         description: '华为云软件开发生产线'
     },
     {
-        name: 'DaoCloud 镜像',
-        url: 'https://f1361db2.m.daocloud.io',
-        provider: 'DaoCloud',
-        description: 'DaoCloud 提供的镜像加速服务'
-    },
-    {
-        name: '百度云镜像',
-        url: 'https://mirror.baidubce.com',
-        provider: '百度云',
-        description: '百度智能云容器镜像服务'
-    },
-    {
-        name: '七牛云镜像',
-        url: 'https://reg-mirror.qiniu.com',
-        provider: '七牛云',
-        description: '七牛云提供的 Docker 镜像加速'
-    },
-    {
         name: '上海交大镜像',
         url: 'https://docker.mirrors.sjtug.sjtu.edu.cn',
         provider: '上海交大',
         description: '上海交通大学软件源镜像服务'
     },
     {
-        name: '清华大学镜像',
-        url: 'https://mirrors.tuna.tsinghua.edu.cn/docker-ce',
-        provider: '清华大学',
-        description: '清华大学开源软件镜像站'
-    },
-    {
         name: '南京大学镜像',
         url: 'https://docker.nju.edu.cn',
         provider: '南京大学',
         description: '南京大学开源镜像站'
-    },
-    {
-        name: '字节跳动镜像',
-        url: 'https://cr.volcengine.com',
-        provider: '字节跳动',
-        description: '火山引擎容器镜像服务'
-    },
-    {
-        name: '京东云镜像',
-        url: 'https://hub-mirror.jdcloud.com',
-        provider: '京东云',
-        description: '京东云容器镜像服务'
-    },
-    {
-        name: '又拍云镜像',
-        url: 'https://docker.mirrors.upyun.com',
-        provider: '又拍云',
-        description: '又拍云 Docker 镜像加速'
-    },
-    {
-        name: 'Azure 中国镜像',
-        url: 'https://dockerhub.azk8s.cn',
-        provider: 'Azure',
-        description: 'Microsoft Azure 中国镜像'
-    },
-    {
-        name: '中国官方镜像',
-        url: 'https://registry.docker-cn.com',
-        provider: 'Docker官方',
-        description: 'Docker 官方中国镜像'
     },
     {
         name: '毫秒镜像',
@@ -115,58 +55,10 @@ const dockerServices = [
         description: '耗子面板 CloudFlare 镜像'
     },
     {
-        name: '轩辕镜像',
-        url: 'https://docker.xuanyuan.me',
-        provider: '轩辕镜像',
-        description: '轩辕镜像 CloudFlare 免费版'
-    },
-    {
         name: 'DockerProxy',
         url: 'https://dockerproxy.net',
         provider: 'DockerProxy',
         description: 'DockerProxy Oracle CDN'
-    },
-    {
-        name: 'Fast360',
-        url: 'https://hub.fast360.xyz',
-        provider: 'Fast360',
-        description: 'Fast360 Nginx 镜像源'
-    },
-    {
-        name: 'Docker Layer ICU',
-        url: 'https://image.cloudlayer.icu',
-        provider: 'CloudLayer',
-        description: 'Docker Layer ICU Nginx'
-    },
-    {
-        name: '奶昔论坛',
-        url: 'https://docker-registry.nmqu.com',
-        provider: '奶昔论坛',
-        description: '奶昔论坛 CloudFlare 镜像'
-    },
-    {
-        name: '爱铭网络',
-        url: 'https://hub.amingg.com',
-        provider: '爱铭网络',
-        description: '爱铭网络 CloudFlare 镜像'
-    },
-    {
-        name: '厚浪云',
-        url: 'https://docker.hlmirror.com',
-        provider: '厚浪云',
-        description: '厚浪云 CloudFlare 镜像'
-    },
-    {
-        name: '棉花云香港',
-        url: 'https://hub2.nat.tf',
-        provider: '棉花云',
-        description: '棉花云香港 BGP 节点'
-    },
-    {
-        name: '棉花云日本',
-        url: 'https://hub3.nat.tf',
-        provider: '棉花云',
-        description: '棉花云日本东京节点'
     },
     {
         name: '科技 lion',
@@ -175,34 +67,22 @@ const dockerServices = [
         description: '自媒体 UP 主 Nginx 镜像'
     },
     {
-        name: '1Panel 三方源',
-        url: 'https://docker.367231.xyz',
-        provider: '1Panel社区',
-        description: '1Panel 核心用户 GXL 驱动'
+        name: 'atomhub',
+        url: 'https://atomhub.openatom.cn',
+        provider: '开放原子',
+        description: '开放原子开源基金会镜像'
     },
     {
-        name: 'SUNBALCONY',
-        url: 'https://docker.etcd.fun',
-        provider: 'SUNBALCONY',
-        description: 'ipip.icu 博主 EdgeOne'
+        name: 'Docker Proxy',
+        url: 'https://dockerpull.com',
+        provider: 'DockerPull',
+        description: 'Docker 镜像代理服务'
     },
     {
-        name: 'apiba 镜像',
-        url: 'https://docker.apiba.cn',
-        provider: 'apiba',
-        description: 'apiba.cn CloudFlare 镜像'
-    },
-    {
-        name: 'mxjia 代理',
-        url: 'https://proxy.vvvv.ee',
-        provider: 'mxjia',
-        description: 'NodeSeek 大佬 Nginx 代理'
-    },
-    {
-        name: '飞牛 NAS',
-        url: 'https://docker.fnnas.com',
-        provider: '飞牛NAS',
-        description: '飞牛 NAS Nginx 镜像源'
+        name: 'Docker Hub 代理',
+        url: 'https://hub.docker.com',
+        provider: 'Docker官方',
+        description: 'Docker Hub 官方源'
     }
 ];
 
@@ -253,7 +133,7 @@ function initializeServices() {
 // 检查单个服务状态
 async function checkServiceStatus(service) {
     try {
-        const response = await fetch('./backend/api/check-service.php', {
+        const response = await fetch('./api.php?action=check_service', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -291,7 +171,7 @@ async function checkServiceStatus(service) {
 async function checkAllServices() {
     try {
         // 尝试使用批量检测API
-        const response = await fetch('./backend/api/check-all.php', {
+        const response = await fetch('./api.php?action=check_all', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

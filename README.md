@@ -1,10 +1,10 @@
 # Docker 镜像加速服务监控
 
-一个专业的 Docker 镜像加速服务监控平台，实时监控国内 33+ 个 Docker Hub 镜像加速服务的可用性和响应时间。
+一个专业的 Docker 镜像加速服务监控平台，实时监控国内 14 个 Docker Hub 镜像加速服务的可用性和响应时间。
 
 ## 🌟 功能特性
 
-- **实时监控**: 监控 33+ 个国内 Docker 镜像加速服务
+- **实时监控**: 监控 14 个国内 Docker 镜像加速服务
 - **状态检测**: 实时检测服务可用性和响应时间
 - **响应式设计**: 完美适配桌面端和移动端
 - **深色模式**: 支持浅色/深色主题切换
@@ -24,29 +24,21 @@
 - **阿里云**: registry.cn-hangzhou.aliyuncs.com
 - **腾讯云**: mirror.ccs.tencentyun.com
 - **华为云**: swr.cn-north-1.myhuaweicloud.com
-- **百度云**: mirror.baidubce.com
-- **京东云**: hub-mirror.jdcloud.com
-- **字节跳动**: cr.volcengine.com
-- **七牛云**: reg-mirror.qiniu.com
-- **又拍云**: docker.mirrors.upyun.com
-- **Azure 中国**: dockerhub.azk8s.cn
 
 ### 🎓 高校镜像站
 - **中科大**: docker.mirrors.ustc.edu.cn
-- **清华大学**: mirrors.tuna.tsinghua.edu.cn/docker-ce
 - **上海交大**: docker.mirrors.sjtug.sjtu.edu.cn
 - **南京大学**: docker.nju.edu.cn
 
 ### 🌐 第三方服务
-- **网易云**: hub-mirror.c.163.com
-- **DaoCloud**: f1361db2.m.daocloud.io
-- **Docker 官方中国**: registry.docker-cn.com
 - **毫秒镜像**: docker.1ms.run
 - **1Panel**: docker.1panel.live
 - **耗子面板**: hub.rat.dev
-- **轩辕镜像**: docker.xuanyuan.me
 - **DockerProxy**: dockerproxy.net
-- 以及更多...
+- **科技lion**: docker.kejilion.pro
+- **开放原子**: atomhub.openatom.cn
+- **DockerPull**: dockerpull.com
+- **Docker Hub**: hub.docker.com
 
 ## 🚀 快速开始
 
