@@ -13,7 +13,7 @@
     <meta name="googlebot" content="index, follow">
 
     <!-- Canonical URL -->
-    <link rel="canonical" href="https://docker-monitor.example.com/">
+    <link rel="canonical" href="https://docker.mcya.cn/">
 
     <!-- 网站图标 -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
@@ -63,7 +63,7 @@
         "@type": "WebApplication",
         "name": "Docker 镜像加速服务监控",
         "description": "专业的Docker镜像加速服务监控平台，实时监控国内Docker Hub镜像加速服务的可用性和响应时间",
-        "url": "https://docker-monitor.example.com/",
+        "url": "https://docker.mcya.cn/",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "Web Browser",
         "offers": {
@@ -78,24 +78,17 @@
         "provider": {
             "@type": "Organization",
             "name": "Docker镜像加速监控",
-            "url": "https://docker-monitor.example.com/"
+            "url": "https://docker.mcya.cn/"
         },
         "featureList": [
             "实时监控Docker镜像加速服务",
-            "33+个国内镜像源状态检测",
+            "14个国内镜像源状态检测",
             "响应时间监控",
             "深色模式支持",
             "移动端适配",
             "配置指南提供"
         ],
-        "screenshot": "https://docker-monitor.example.com/screenshot.png",
-        "aggregateRating": {
-            "@type": "AggregateRating",
-            "ratingValue": "4.8",
-            "ratingCount": "156",
-            "bestRating": "5",
-            "worstRating": "1"
-        }
+        "screenshot": "https://docker.mcya.cn/demo.png"
     }
     </script>
 
@@ -104,8 +97,7 @@
         "@context": "https://schema.org",
         "@type": "Organization",
         "name": "Docker镜像加速监控",
-        "url": "https://docker-monitor.example.com/",
-        "logo": "https://docker-monitor.example.com/logo.png",
+        "url": "https://docker.mcya.cn/",
         "description": "提供专业的Docker镜像加速服务监控，帮助开发者选择最佳的镜像源",
         "foundingDate": "2024",
         "contactPoint": {
@@ -114,7 +106,7 @@
             "availableLanguage": ["Chinese", "English"]
         },
         "sameAs": [
-            "https://github.com/docker-monitor"
+            "https://github.com/mcwlgzs/docker-mirror-monitor"
         ]
     }
     </script>
@@ -546,6 +538,33 @@
             top: 6px;
         }
 
+        /* 筛选按钮激活状态 */
+        .active-filter {
+            background: #007aff !important;
+            color: white !important;
+            border-color: #007aff !important;
+        }
+
+        .dark .active-filter {
+            background: #0a84ff !important;
+            color: white !important;
+            border-color: #0a84ff !important;
+        }
+
+        /* 可排序表头 */
+        [data-sort] {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        [data-sort]:hover {
+            color: #007aff;
+        }
+
+        .dark [data-sort]:hover {
+            color: #0a84ff;
+        }
+
         /* 移动端优化 */
         @media (max-width: 767px) {
             /* 表格在移动端的优化 */
@@ -680,7 +699,7 @@
         <!-- Service Status Table -->
         <section class="bg-apple-card rounded-apple-lg shadow-apple overflow-hidden border border-apple-border" role="region" aria-labelledby="service-status-title">
             <header class="px-4 md:px-6 py-4 md:py-5 border-b border-apple-border bg-gradient-to-r from-gray-50 to-white">
-                <div class="flex items-center justify-between">
+                <div class="flex items-center justify-between mb-3">
                     <div>
                         <h2 id="service-status-title" class="text-lg md:text-xl font-semibold text-gray-900">镜像加速服务状态</h2>
                         <p class="text-xs md:text-sm text-apple-gray mt-1 hidden sm:block">实时监控各大云服务商的 Docker 镜像加速服务</p>
@@ -691,15 +710,22 @@
                         <span class="text-xs text-apple-gray sm:hidden">监控中</span>
                     </div>
                 </div>
+                <!-- 筛选按钮 -->
+                <div class="flex flex-wrap gap-2">
+                    <button data-filter="all" class="active-filter px-3 py-1 rounded-apple text-xs font-medium border border-apple-border bg-white text-gray-700 transition-colors duration-200">全部</button>
+                    <button data-filter="normal" class="px-3 py-1 rounded-apple text-xs font-medium border border-apple-border bg-white text-gray-700 transition-colors duration-200">正常</button>
+                    <button data-filter="slow" class="px-3 py-1 rounded-apple text-xs font-medium border border-apple-border bg-white text-gray-700 transition-colors duration-200">缓慢</button>
+                    <button data-filter="error" class="px-3 py-1 rounded-apple text-xs font-medium border border-apple-border bg-white text-gray-700 transition-colors duration-200">异常</button>
+                </div>
             </header>
             <div class="overflow-x-auto">
                 <table class="min-w-full" role="table" aria-label="Docker镜像加速服务状态表">
                     <thead class="bg-gray-50/50">
                         <tr>
-                            <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-apple-gray uppercase tracking-wider">服务提供商</th>
+                            <th scope="col" data-sort="provider" class="px-6 py-4 text-left text-xs font-semibold text-apple-gray uppercase tracking-wider">服务提供商 <i class="sort-icon fas fa-sort ml-1 text-apple-gray opacity-50"></i></th>
                             <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-apple-gray uppercase tracking-wider">镜像地址</th>
-                            <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-apple-gray uppercase tracking-wider">状态</th>
-                            <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-apple-gray uppercase tracking-wider">响应时间</th>
+                            <th scope="col" data-sort="status" class="px-6 py-4 text-left text-xs font-semibold text-apple-gray uppercase tracking-wider">状态 <i class="sort-icon fas fa-sort ml-1 text-apple-gray opacity-50"></i></th>
+                            <th scope="col" data-sort="responseTime" class="px-6 py-4 text-left text-xs font-semibold text-apple-gray uppercase tracking-wider">响应时间 <i class="sort-icon fas fa-sort ml-1 text-apple-gray opacity-50"></i></th>
                             <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-apple-gray uppercase tracking-wider">操作</th>
                         </tr>
                     </thead>
@@ -791,7 +817,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
     </main>
 
     <!-- Footer -->
@@ -804,7 +830,7 @@
                     </div>
                     <span class="text-lg font-semibold text-gray-900">Docker 镜像加速监控</span>
                 </div>
-                <p class="text-apple-gray text-sm mb-2">&copy; 2024 Docker 镜像加速监控. 数据仅供参考，请以实际使用为准。</p>
+                <p class="text-apple-gray text-sm mb-2">&copy; 2024-2026 Docker 镜像加速监控. 数据仅供参考，请以实际使用为准。</p>
                 <div class="flex items-center justify-center space-x-4 text-xs text-apple-gray">
                     <span class="flex items-center space-x-1">
                         <i class="fas fa-heart text-apple-red" aria-hidden="true"></i>
