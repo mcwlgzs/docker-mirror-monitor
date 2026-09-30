@@ -1,220 +1,292 @@
 # Docker 镜像加速服务监控
 
-一个专业的 Docker 镜像加速服务监控平台，实时监控国内 14 个 Docker Hub 镜像加速服务的可用性和响应时间。
+由**本机服务器直连探测**国内 Docker Hub 镜像加速服务的可用性与响应速度，并对每个镜像源执行真实的 Docker Registry `/v2/` 握手，而不是依赖第三方接口或 ICMP 延迟。
+
+> **关于早期版本**：v1.x 的检测结果来自模拟数据（前端 `Math.random()`）与第三方 ping 接口，测的是「第三方服务器 → 镜像源」的网络延迟，既不代表镜像站真的能用，也与本机体验无关。v2.0 彻底移除了这两者，页面上展示的每一个状态都来自本服务器的真实探测。历史 issue 中反映的「检测不准确」「数据造假」问题正是本次重写的目标。
+
+## 检测原理
+
+```
+浏览器 ──> nginx ──> php-fpm ──> [ curl_multi 并发 ] ──> 各镜像源 /v2/ 握手
+                                      │
+                                      └──> data/cache（文件缓存，默认 5 分钟）
+```
+
+1. **真实握手**：对每个镜像源请求其 Registry 接口 `/v2/`。
+   - `200` → 公开可用
+   - `401` / `403` → 需要鉴权，属**正常可用**（Docker Registry 规范行为）
+   - 其他状态码、连接超时、TLS 失败、DNS 解析失败 → 不可用
+2. **本机探测**：探测请求由部署本项目的服务器发出，结果反映该服务器所在网络的实际体验。
+3. **并发执行**：单轮 `curl_multi` 同时探测全部镜像源，整体耗时约等于最慢的一个源，而非逐个累加。
+4. **证书校验**：开启 `CURLOPT_SSL_VERIFYPEER`，自动探测系统 CA 证书包位置。
 
 ## 功能特性
 
-- **实时监控**: 监控 14 个国内 Docker 镜像加速服务
-- **并发检测**: 使用 cURL Multi Handle 并发检测所有服务
-- **备用检测**: 当第三方 Ping API 不可用时，自动回退到直接 cURL 检测
-- **排序筛选**: 支持按提供商、状态、响应时间排序，按状态筛选
-- **响应式设计**: 完美适配桌面端和移动端
-- **深色模式**: 支持浅色/深色主题切换，跟随系统偏好
-- **一键复制**: 快速复制镜像地址到剪贴板
-- **自动刷新**: 每 5 分钟自动更新服务状态
-- **配置指南**: 提供 macOS/Linux/Windows 的 Docker 配置教程
-- **缓存机制**: 10 分钟文件缓存，减少重复请求
-- **速率限制**: 防止 API 被滥用
-- **健康检查**: 提供系统自身健康检查端点
+- **真实检测**：Docker Registry `/v2/` 握手，返回 HTTP 状态码与实测耗时
+- **并发探测**：`curl_multi` 单轮完成全部镜像源
+- **四种状态**：快速 / 一般 / 缓慢 / 极慢，超时或握手失败才算异常
+- **失败归因**：区分 DNS 解析失败、TLS 握手失败、连接超时、HTTP 404、Cloudflare 5xx 等具体原因
+- **排序筛选**：按提供商、状态、响应时间排序，按状态筛选
+- **一键复制**：直接复制镜像地址，用于 `daemon.json`
+- **配置指南**：根据本次检测结果自动生成 `registry-mirrors` 配置，只推荐真正可用的镜像源
+- **自动刷新**：每 5 分钟刷新，页面重新可见时按需刷新
+- **深色模式**：跟随系统偏好，可手动切换
+- **缓存机制**：默认 5 分钟文件缓存，`?force=1` 可强制刷新
+- **速率限制**：nginx + PHP 双层按 IP 限流
+- **健康检查**：`?action=health` 可直接接入监控系统
 
-## 项目演示
-
-![项目演示](demo.png)
-
-## 监控的服务提供商
-
-### 云服务商
-- **阿里云**: registry.cn-hangzhou.aliyuncs.com
-- **腾讯云**: mirror.ccs.tencentyun.com
-- **华为云**: swr.cn-north-1.myhuaweicloud.com
-
-### 高校镜像站
-- **中科大**: docker.mirrors.ustc.edu.cn
-- **上海交大**: docker.mirrors.sjtug.sjtu.edu.cn
-- **南京大学**: docker.nju.edu.cn
-
-### 第三方服务
-- **毫秒镜像**: docker.1ms.run
-- **1Panel**: docker.1panel.live
-- **耗子面板**: hub.rat.dev
-- **DockerProxy**: dockerproxy.net
-- **科技lion**: docker.kejilion.pro
-- **开放原子**: atomhub.openatom.cn
-- **DockerPull**: dockerpull.com
-- **Docker Hub**: hub.docker.com
-
-## 快速开始
-
-### 环境要求
-
-- **PHP**: 7.4+（推荐 8.0+）
-- **PHP 扩展**: curl, json, mbstring
-- **Web 服务器**: Apache 2.4+ 或 Nginx 1.18+
-- **浏览器**: Chrome、Firefox、Safari、Edge 等现代浏览器
-
-### 部署方式
-
-#### 1. 完整部署（推荐）
+## 快速开始（Docker Compose，推荐）
 
 ```bash
-# 克隆项目
 git clone https://github.com/mcwlgzs/docker-mirror-monitor.git
 cd docker-mirror-monitor
 
-# 设置目录权限
-chmod 755 cache/ logs/
-# 如果目录不存在会自动创建
+# 可选：自定义端口等参数
+cp .env.example .env
+
+docker compose up -d --build
 ```
 
-#### 2. Nginx 配置
+打开 <http://localhost:8080> 即可。首次探测约需 2~8 秒，结果会缓存 5 分钟。
 
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-    root /path/to/docker-mirror-monitor;
-    index index.html;
-
-    location / {
-        try_files $uri $uri/ =404;
-    }
-
-    location ~ \.php$ {
-        fastcgi_pass unix:/run/php/php-fpm.sock;
-        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-        include fastcgi_params;
-    }
-
-    gzip on;
-    gzip_types text/css application/javascript text/javascript application/json;
-}
-```
-
-#### 3. Apache 配置
-
-```apache
-<VirtualHost *:80>
-    ServerName your-domain.com
-    DocumentRoot /path/to/docker-mirror-monitor
-
-    <Directory /path/to/docker-mirror-monitor>
-        AllowOverride All
-        Require all granted
-    </Directory>
-</VirtualHost>
-```
-
-#### 4. 仅前端部署（演示模式）
+查看状态与日志：
 
 ```bash
-# 使用任意 HTTP 服务器运行前端（无后端时自动进入演示模式）
-python -m http.server 8000
-# 或
-npx serve .
+docker compose ps
+docker compose logs -f php
+curl -s http://localhost:8080/api.php?action=health
 ```
+
+停止 / 升级：
+
+```bash
+docker compose down            # 停止（保留缓存与日志数据卷）
+docker compose up -d --build   # 拉取新代码后重建
+
+docker compose down -v         # 连数据卷一起删除（会清空缓存与日志）
+```
+
+### 端口与反向代理
+
+默认映射到宿主机 `8080`。改端口只需编辑 `.env`：
+
+```env
+DMM_HTTP_PORT=80
+```
+
+放在已有的 nginx / Caddy / Traefik 后面时，请确保转发时保留 `X-Forwarded-For`，
+并保持 `DMM_TRUST_PROXY=1`（默认已开启），否则限流会误判客户端 IP。
+
+### 只想要前端 / 直接跑 PHP
+
+不使用 Docker 时，把仓库目录交给任意支持 PHP 的 Web 服务器即可，文档根指向仓库根目录：
+
+- 需要 PHP 7.4+（推荐 8.1+），扩展：`curl`、`json`、`openssl`
+- 需要开放 `data/` 目录的写权限
+- 所有配置项都可通过环境变量覆盖，见 [config.php](config.php) 与 `.env.example`
+
+本地快速验证：
+
+```bash
+php selftest.php            # 完整自检（含真实探测）
+php selftest.php --offline  # 只检查环境与配置，不联网
+node dom_smoke.mjs          # 前端渲染冒烟测试（无需浏览器、无需依赖）
+```
+
+`dom_smoke.mjs` 会在 Node 里用一套极简 DOM 桩直接执行真实的 `script.js`，喂入固定的接口数据，
+断言表格渲染、状态分类、筛选排序、配置命令生成、XSS 转义与主题切换等浏览器分支。
+它不依赖 jsdom 等第三方包，属于开发辅助脚本，部署镜像不会包含它。
 
 ## 项目结构
 
 ```
 docker-mirror-monitor/
-├── index.html          # 主页面
-├── script.js           # 前端逻辑（排序、筛选、主题切换等）
-├── api.php             # 后端 API（并发检测、缓存、速率限制）
-├── config.php          # 配置文件（服务列表、超时、CORS 等）
-├── test.html           # 开发调试页面
-├── favicon.ico         # 网站图标
-├── demo.png            # 项目演示截图
-├── cache/              # 缓存目录（自动创建）
-├── logs/               # 日志目录（自动创建）
-└── README.md           # 项目说明
+├── index.html                  # 主页面
+├── script.js                   # 前端逻辑（渲染、排序、筛选、主题）
+├── theme.js                    # Tailwind 配置（含 darkMode: 'class'）
+├── api.php                     # HTTP 入口与路由
+├── lib.php                     # 探测、缓存、限流、错误翻译等核心实现
+├── config.php                  # 配置（支持环境变量覆盖）
+├── selftest.php                # 自检脚本（可接入 CI）
+├── test.html                   # API 自检面板（仅供内网调试，默认不部署）
+├── dom_smoke.mjs               # 前端渲染冒烟测试（Node，无第三方依赖）
+├── pretty_json.php             # 开发辅助：格式化 API 响应
+├── check_config_errors.php     # 开发辅助：验证配置校验逻辑
+├── check_service_shape.php     # 开发辅助：验证单源探测返回结构
+├── docker-compose.yml          # 一键部署
+├── .env.example                # 环境变量示例
+├── .github/workflows/ci.yml    # CI：PHP 自检 + 前端冒烟 + 镜像构建
+├── docker/
+│   ├── nginx/
+│   │   ├── Dockerfile
+│   │   └── default.conf        # 站点配置、安全头、限流、静态托管
+│   └── php/
+│       ├── Dockerfile
+│       ├── php-fpm.conf
+│       ├── opcache.ini
+│       └── entrypoint.sh       # 数据目录准备 + 启动自检
+└── data/                       # 运行时数据（缓存 + 日志，自动创建）
 ```
 
 ## API 说明
 
 | 端点 | 方法 | 说明 |
 |------|------|------|
-| `?action=get_services` | GET | 获取服务列表 |
-| `?action=check_all` | GET/POST | 检测所有 14 个服务 |
-| `?action=quick_check` | GET | 快速检测前 10 个服务 |
-| `?action=check_service` | POST | 检测单个服务 `{"url": "..."}` |
-| `?action=health` | GET | 系统健康检查 |
+| `?action=get_services` | GET | 获取镜像源列表与站点信息 |
+| `?action=check_all` | GET | 探测全部镜像源 |
+| `?action=quick_check` | GET | 只探测前 N 个（默认 6），用于首屏快速出结果 |
+| `?action=check_service` | POST | 探测单个镜像源，请求体 `{"url": "..."}` |
+| `?action=health` | GET | 健康检查，异常时返回 503 |
+| `?action=version` | GET | 版本与运行环境 |
 
-参数说明：
-- `?force` - 跳过缓存，强制重新检测
+通用参数：
 
-## 配置说明
+- `force=1` — 跳过缓存，强制重新探测
+- `pretty=1` — 格式化输出 JSON，便于人工查看
 
-所有配置集中在 [config.php](config.php) 中管理：
+响应示例：
 
-```php
-return [
-    'services' => [...],           // Docker 镜像服务列表
-    'cache' => ['duration' => 600], // 缓存时长（秒）
-    'timeout' => ['default' => 3],  // 检测超时（秒）
-    'cors_origins' => [...],        // CORS 白名单
-    'rate_limit' => [               // 速率限制
-        'max_requests' => 30,
-        'window' => 60,
-    ],
-    'thresholds' => [               // 状态阈值（毫秒）
-        'fast' => 500,
-        'fair' => 1000,
-        'slow' => 2000,
-    ],
-];
+```json
+{
+  "success": true,
+  "engine": "registry-handshake",
+  "scope": "all",
+  "check_time_ms": 1865,
+  "cached": false,
+  "stats": { "total": 14, "fast": 5, "fair": 0, "slow": 3, "very_slow": 0, "error": 6, "available": 8, "availability": 57.1 },
+  "data": [
+    {
+      "name": "阿里云镜像",
+      "url": "https://registry.cn-hangzhou.aliyuncs.com",
+      "probeUrl": "https://registry.cn-hangzhou.aliyuncs.com/v2/",
+      "httpCode": 401,
+      "responseTime": 302,
+      "status": "fast",
+      "reachable": true,
+      "authRequired": true,
+      "method": "registry-handshake",
+      "error": ""
+    }
+  ]
+}
 ```
-
-### 添加新的镜像服务
-
-在 `config.php` 的 `services` 数组中添加：
-
-```php
-['name' => '服务名称', 'url' => 'https://your-mirror.com', 'provider' => '提供商', 'description' => '描述'],
-```
-
-前端会自动从后端获取最新服务列表，无需手动同步。
-
-## 技术栈
-
-### 前端
-- HTML5 + CSS3 + JavaScript (ES6+)
-- Tailwind CSS (CDN)
-- Font Awesome 6.0
-- Apple Design Language 风格
-
-### 后端
-- PHP 7.4+
-- cURL Multi Handle 并发检测
-- 文件缓存系统
-- RESTful API
 
 ## 状态说明
 
-| 状态 | 响应时间 | 说明 |
-|------|----------|------|
-| 快速 (fast) | < 500ms | 服务响应极快 |
-| 一般 (fair) | 500-1000ms | 服务响应正常 |
-| 缓慢 (slow) | 1000-2000ms | 服务响应较慢 |
-| 异常 (error) | > 2000ms 或无响应 | 服务不可用 |
+| 状态 | 判定条件 | 页面展示 |
+|------|----------|----------|
+| 快速 (fast) | 握手成功且 < 500ms | 绿色 |
+| 一般 (fair) | 500 ~ 1000ms | 蓝色 |
+| 缓慢 (slow) | 1000 ~ 2000ms | 橙色 |
+| 极慢 (very_slow) | > 2000ms 但握手成功 | 橙色，标注「极慢」 |
+| 异常 (error) | 握手失败、超时、证书错误 | 红色，附带具体原因 |
+| 待检测 (pending) | 本轮未探测（如 quick_check 只覆盖部分源） | 灰色 |
+
+阈值可通过 `DMM_THRESHOLD_FAST` / `DMM_THRESHOLD_FAIR` / `DMM_THRESHOLD_SLOW` 调整。
+
+## 配置
+
+所有配置集中在 [config.php](config.php)，每一项都可通过环境变量覆盖，容器部署时在 `.env` 中设置即可。常用项：
+
+| 环境变量 | 默认值 | 说明 |
+|----------|--------|------|
+| `DMM_HTTP_PORT` | `8080` | 宿主机映射端口（仅 compose 使用） |
+| `DMM_PROBE_TIMEOUT` | `8` | 单个镜像源探测总超时（秒） |
+| `DMM_PROBE_CONNECT_TIMEOUT` | `5` | 建立连接超时（秒） |
+| `DMM_CACHE_DURATION` | `300` | 探测结果缓存时长（秒） |
+| `DMM_RATE_LIMIT_MAX` | `60` | 限流窗口内最大请求数 |
+| `DMM_RATE_LIMIT_WINDOW` | `60` | 限流窗口（秒） |
+| `DMM_RATE_LIMIT_BLOCK` | `120` | 触发限流后的封禁时长（秒） |
+| `DMM_TRUST_PROXY` | `1`（compose） | 是否信任 `X-Forwarded-For` |
+| `DMM_DATA_DIR` | `./data` | 缓存与日志目录 |
+| `DMM_SITE_URL` | 空 | 站点公开地址，用于 canonical / og:url |
+| `DMM_CORS_ORIGINS` | 本地开发地址 | CORS 白名单，逗号分隔；同源部署可留空 |
+| `DMM_CA_BUNDLE` | 自动探测 | 自定义 CA 证书包路径 |
+| `DMM_DEBUG` | `0` | 返回详细错误信息（仅调试期开启） |
+
+完整列表见 `.env.example`。
+
+### 镜像源可用性的地域差异
+
+探测结果**只代表部署本项目的服务器所处的网络**。典型例子：
+
+- `docker.mirrors.ustc.edu.cn`（中科大）、`mirror.ccs.tencentyun.com`（腾讯云）
+  在公共 DNS 下无法解析。腾讯云加速地址仅限**腾讯云内网**使用，因此该项目在
+  配置里标记为 `region=vpc`，并在页面上明确提示，避免把「本地不可用」误报成故障。
+- 部分镜像源对非浏览器 User-Agent 返回 403，本身服务正常。
+
+如果你的服务器在境外，部分国内镜像源会探测失败，这属于预期行为。
+
+## 添加或修改镜像源
+
+编辑 [config.php](config.php) 中的 `$services` 数组：
+
+```php
+[
+    'name'        => '自建镜像',
+    'url'         => 'https://mirror.example.com',
+    'provider'    => '自建',
+    'description' => '内部 Harbor 加速地址',
+    'region'      => 'public',              // public 或 vpc
+    'note'        => '',                    // 需要特别说明时填写
+    'probe'       => 'https://mirror.example.com/v2/',  // 可省略，默认 url + /v2/
+],
+```
+
+或用环境变量整体覆盖（适合容器部署，无需重建镜像）：
+
+```env
+DMM_SERVICES_JSON=[{"name":"自建镜像","url":"https://mirror.example.com","provider":"自建"}]
+```
+
+配置会在加载时校验：URL 必须合法、`id` 与 `url` 不能重复，不合法时接口直接返回 `CONFIG_ERROR` 而不是输出半残数据。
+
+## 技术栈
+
+- **前端**：原生 HTML / CSS / JavaScript（ES6+），Tailwind CSS 与 Font Awesome 走 CDN
+- **后端**：PHP 7.4+（容器内为 8.2），`curl_multi` 并发探测，文件缓存
+- **部署**：Docker Compose（nginx + php-fpm），或任意 PHP 主机
+
+## 安全设计
+
+- 探测目标来自服务端白名单，`check_service` 只接受列表中已登记的 URL，避免被当作 SSRF 跳板
+- 开启 TLS 证书校验（v1.x 曾关闭）
+- nginx 层除 `api.php` 外拒绝所有 `.php`，并屏蔽 `config.php`、`lib.php`、`docker-compose.yml` 等内部文件
+- 输出安全响应头：`X-Content-Type-Options`、`X-Frame-Options`、`Referrer-Policy`、`Permissions-Policy`、CSP
+- 前端渲染全部使用 `textContent` / `createElement`，不拼接 `innerHTML`，避免镜像源信息引入 XSS
+- 容器以非 root 的 `www-data` 运行 PHP-FPM，并启用 `no-new-privileges`
+- `DMM_DEBUG=0` 时错误详情不返回给客户端，只写日志
 
 ## 贡献指南
 
 1. Fork 本项目
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
+2. 创建特性分支（`git checkout -b feature/AmazingFeature`）
+3. 提交更改（`git commit -m 'Add some AmazingFeature'`）
+4. 推送到分支（`git push origin feature/AmazingFeature`）
 5. 开启 Pull Request
+
+提交前建议先跑一遍：
+
+```bash
+php selftest.php            # 环境、配置与探测自检
+php selftest.php --offline  # 只检查环境与配置，不联网
+php check_config_errors.php # 配置校验逻辑自检
+node dom_smoke.mjs          # 前端渲染冒烟测试
+```
+
+以上检查（外加镜像构建与接口冒烟）已配置在 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) 中，
+提交 PR 后会自动执行。
 
 ## 许可证
 
-本项目采用 MIT 许可证。
+本项目采用 MIT 许可证，详见 [LICENSE](LICENSE)。
 
 ## 联系方式
 
-- 项目地址: [GitHub](https://github.com/mcwlgzs/docker-mirror-monitor)
-- 问题反馈: [Issues](https://github.com/mcwlgzs/docker-mirror-monitor/issues)
-- 邮箱: mcwlgzs@qq.com
+- 项目地址：[GitHub](https://github.com/mcwlgzs/docker-mirror-monitor)
+- 问题反馈：[Issues](https://github.com/mcwlgzs/docker-mirror-monitor/issues)
+- 邮箱：mcwlgzs@qq.com
 
 ---
 
-**免责声明**: 本项目仅用于监控和展示目的，数据仅供参考，请以实际使用为准。
+**免责声明**：本项目的探测结果反映的是**运行本服务的服务器**在探测时刻的网络状况，仅供排查参考。镜像源的可用性会随时间与网络环境变化，请以自己机器上的 `docker pull` 实际结果为准。

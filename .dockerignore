@@ -1,0 +1,34 @@
+# 运行时数据（缓存、日志）——绝不进镜像，由数据卷提供
+data/
+
+# 本地环境变量
+.env
+.env.local
+.env.*.local
+
+# 版本控制与开发工具
+.git/
+.gitignore
+.github/
+.vscode/
+.idea/
+*.swp
+
+# 文档（不需要进镜像）
+README.md
+docs/
+LICENSE
+
+# 开发辅助脚本（selftest.php 例外，容器启动时会调用它）
+pretty_json.php
+check_config_errors.php
+check_service_shape.php
+test.html
+
+# 各种日志与临时文件
+*.log
+*.tmp
+*.bak
+*~
+.DS_Store
+Thumbs.db

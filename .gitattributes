@@ -1,0 +1,38 @@
+# 统一换行符，避免在 Windows 上克隆后出现 CRLF。
+#
+# 这不是洁癖：仓库里的 entrypoint.sh 会被 COPY 进容器并由 /bin/sh 执行，
+# 如果带上 CRLF，内核会去找名为 "/bin/sh\r" 的解释器，容器启动直接失败；
+# nginx / php-fpm 配置出现多余回车也会报解析错误。
+# 因此下面这些文本文件强制以 LF 签出，与 core.autocrlf 的取值无关。
+
+* text=auto eol=lf
+
+*.sh                text eol=lf
+*.bash              text eol=lf
+Dockerfile          text eol=lf
+*.Dockerfile        text eol=lf
+*.conf              text eol=lf
+*.ini               text eol=lf
+*.yml               text eol=lf
+*.yaml              text eol=lf
+*.php               text eol=lf
+*.html              text eol=lf
+*.css               text eol=lf
+*.js                text eol=lf
+*.mjs               text eol=lf
+*.json              text eol=lf
+*.md                text eol=lf
+.env.example        text eol=lf
+.gitignore          text eol=lf
+.dockerignore       text eol=lf
+LICENSE             text eol=lf
+
+# 二进制资源禁止做换行符转换
+*.png               binary
+*.jpg               binary
+*.jpeg              binary
+*.gif               binary
+*.webp              binary
+*.ico               binary
+*.woff              binary
+*.woff2             binary

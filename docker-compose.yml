@@ -1,0 +1,93 @@
+# =============================================================================
+# Docker 镜像加速服务监控 - Docker Compose 部署
+#
+# 快速开始：
+#   1. cp .env.example .env        # 按需修改端口等参数
+#   2. docker compose up -d --build
+#   3. 打开 http://localhost:8080
+#
+# 说明：
+#   * 共两个服务：nginx（对外）+ php（探测引擎），只暴露 nginx 的端口。
+#   * php 容器需要访问公网才能探测镜像源；若你的网络有限制，
+#     请给 php 服务单独配置 networks 与代理（见 .env.example 里的注释）。
+# =============================================================================
+
+name: docker-mirror-monitor
+
+services:
+  php:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    image: docker-mirror-monitor-php:2.0.0
+    container_name: dmm-php
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      DMM_DATA_DIR: /var/www/html/data
+      DMM_CACHE_DURATION: ${DMM_CACHE_DURATION:-300}
+      DMM_PROBE_TIMEOUT: ${DMM_PROBE_TIMEOUT:-8}
+      DMM_PROBE_CONNECT_TIMEOUT: ${DMM_PROBE_CONNECT_TIMEOUT:-5}
+      DMM_RATE_LIMIT_MAX: ${DMM_RATE_LIMIT_MAX:-60}
+      DMM_RATE_LIMIT_WINDOW: ${DMM_RATE_LIMIT_WINDOW:-60}
+      DMM_RATE_LIMIT_BLOCK: ${DMM_RATE_LIMIT_BLOCK:-120}
+      DMM_LOG_RETENTION_DAYS: ${DMM_LOG_RETENTION_DAYS:-7}
+      # nginx 在前面终结连接，必须信任 X-Forwarded-For 才能识别真实客户端 IP，
+      # 否则所有访客共用一个容器内网 IP，限流会互相误伤。
+      DMM_TRUST_PROXY: ${DMM_TRUST_PROXY:-1}
+      # quick_check 只探测前 N 个源，用于首屏快速出结果
+      DMM_QUICK_LIMIT: ${DMM_QUICK_LIMIT:-6}
+    volumes:
+      # 缓存与日志：容器重建不丢，避免每次启动都重新探测
+      - dmm-data:/var/www/html/data
+    networks:
+      - dmm
+    # 探测需要出网，这里显式声明 DNS，避免部分环境解析失败
+    dns:
+      - ${DMM_DNS_1:-223.5.5.5}
+      - ${DMM_DNS_2:-119.29.29.29}
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(is_writable('/var/www/html/data/cache') && function_exists('curl_multi_init') ? 0 : 1);"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  nginx:
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile
+    image: docker-mirror-monitor-nginx:2.0.0
+    container_name: dmm-nginx
+    restart: unless-stopped
+    depends_on:
+      php:
+        condition: service_healthy
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+    ports:
+      - "${DMM_HTTP_PORT:-8080}:80"
+    networks:
+      - dmm
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  dmm:
+    driver: bridge
+
+volumes:
+  dmm-data:
+    driver: local

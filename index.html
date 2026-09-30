@@ -5,15 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <!-- SEO Meta Tags -->
-    <title>Docker 镜像加速服务监控 - 实时监控14个国内Docker Hub镜像加速服务状态</title>
-    <meta name="description" content="专业的Docker镜像加速服务监控平台，实时监控中科大、阿里云、腾讯云、华为云等14个国内Docker Hub镜像加速服务的可用性和响应时间，提供详细的配置指南。">
+    <title>Docker 镜像加速服务监控 - 实时监控国内 Docker Hub 镜像加速服务状态</title>
+    <meta name="description" content="Docker 镜像加速服务监控平台，由本服务器直连探测各镜像源的 Registry 接口，实时展示可用性、响应时间与失败原因，并提供配置指南。">
     <meta name="keywords" content="Docker镜像加速,Docker Hub镜像,容器镜像加速,Docker配置,镜像源监控,Docker中国镜像,容器服务监控">
     <meta name="author" content="Docker镜像加速监控">
     <meta name="robots" content="index, follow">
     <meta name="googlebot" content="index, follow">
 
-    <!-- Canonical URL -->
-    <link rel="canonical" href="https://docker.mcya.cn/">
+    <!--
+      自托管部署：canonical / og:url 由运行环境决定，默认按当前访问地址生成，
+      可用 DMM_SITE_URL 环境变量固定。避免把示例域名写死进产品。
+    -->
+    <link rel="canonical" href="#" data-canonical>
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Docker 镜像加速服务监控">
+    <meta property="og:description" content="实时监控国内 Docker Hub 镜像加速服务的可用性与响应时间">
+    <meta property="og:url" content="#" data-og-url>
+    <meta name="twitter:card" content="summary_large_image">
+    <script>
+        (function () {
+            var canonical = document.querySelector('[data-canonical]');
+            var ogUrl = document.querySelector('[data-og-url]');
+            if (canonical) canonical.setAttribute('href', location.origin + location.pathname);
+            if (ogUrl) ogUrl.setAttribute('content', location.origin + location.pathname);
+        })();
+    </script>
 
     <!-- 网站图标 -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
@@ -21,49 +37,22 @@
     <!-- Theme Color -->
     <meta name="theme-color" content="#007AFF">
     <meta name="msapplication-TileColor" content="#007AFF">
+
+    <!--
+      注意：Tailwind 的运行时 CDN 通过 document.write 加载 Play CDN，
+      tailwind.config 必须在 CDN 之后赋值（与 v1.x 相同），否则配置不生效。
+    -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'docker-blue': '#007AFF',
-                        'apple-blue': '#007AFF',
-                        'apple-green': '#34C759',
-                        'apple-orange': '#FF9500',
-                        'apple-red': '#FF3B30',
-                        'apple-gray': '#8E8E93',
-                        'apple-bg': '#F2F2F7',
-                        'apple-card': '#FFFFFF',
-                        'apple-border': '#E5E5EA'
-                    },
-                    fontFamily: {
-                        'sf': ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'Segoe UI', 'Roboto', 'sans-serif']
-                    },
-                    boxShadow: {
-                        'apple': '0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06)',
-                        'apple-lg': '0 10px 25px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05)',
-                        'apple-xl': '0 20px 40px rgba(0, 0, 0, 0.1), 0 8px 16px rgba(0, 0, 0, 0.06)'
-                    },
-                    borderRadius: {
-                        'apple': '12px',
-                        'apple-lg': '16px',
-                        'apple-xl': '20px'
-                    }
-                }
-            }
-        }
-    </script>
+    <script src="./theme.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 
-    <!-- Structured Data -->
+    <!-- Structured Data（不写死域名，由部署环境决定实际地址） -->
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
         "@type": "WebApplication",
         "name": "Docker 镜像加速服务监控",
-        "description": "专业的Docker镜像加速服务监控平台，实时监控国内Docker Hub镜像加速服务的可用性和响应时间",
-        "url": "https://docker.mcya.cn/",
+        "description": "Docker 镜像加速服务监控平台，实时监控国内 Docker Hub 镜像加速服务的可用性和响应时间",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "Web Browser",
         "offers": {
@@ -71,24 +60,14 @@
             "price": "0",
             "priceCurrency": "CNY"
         },
-        "author": {
-            "@type": "Organization",
-            "name": "Docker镜像加速监控团队"
-        },
-        "provider": {
-            "@type": "Organization",
-            "name": "Docker镜像加速监控",
-            "url": "https://docker.mcya.cn/"
-        },
         "featureList": [
             "实时监控Docker镜像加速服务",
-            "14个国内镜像源状态检测",
+            "Registry /v2/ 握手探测",
             "响应时间监控",
             "深色模式支持",
             "移动端适配",
             "配置指南提供"
-        ],
-        "screenshot": "https://docker.mcya.cn/demo.png"
+        ]
     }
     </script>
 
@@ -97,14 +76,7 @@
         "@context": "https://schema.org",
         "@type": "Organization",
         "name": "Docker镜像加速监控",
-        "url": "https://docker.mcya.cn/",
-        "description": "提供专业的Docker镜像加速服务监控，帮助开发者选择最佳的镜像源",
-        "foundingDate": "2024",
-        "contactPoint": {
-            "@type": "ContactPoint",
-            "contactType": "technical support",
-            "availableLanguage": ["Chinese", "English"]
-        },
+        "description": "提供 Docker 镜像加速服务监控，帮助开发者选择可用的镜像源",
         "sameAs": [
             "https://github.com/mcwlgzs/docker-mirror-monitor"
         ]
@@ -605,7 +577,7 @@
                         <i class="fab fa-docker text-white text-lg md:text-xl" aria-hidden="true"></i>
                     </div>
                     <div>
-                        <h1 class="text-lg md:text-xl font-semibold text-gray-900">Docker 镜像加速监控</h1>
+                        <h1 class="text-lg md:text-xl font-semibold text-gray-900" data-brand-name>Docker 镜像加速监控</h1>
                         <p class="text-xs md:text-sm text-apple-gray hidden sm:block">实时监控国内镜像加速服务状态</p>
                     </div>
                 </div>
@@ -703,6 +675,8 @@
                     <div>
                         <h2 id="service-status-title" class="text-lg md:text-xl font-semibold text-gray-900">镜像加速服务状态</h2>
                         <p class="text-xs md:text-sm text-apple-gray mt-1 hidden sm:block">实时监控各大云服务商的 Docker 镜像加速服务</p>
+                        <p class="text-xs text-apple-gray mt-1" id="probeMeta"></p>
+                        <p class="text-xs text-apple-gray mt-1 hidden" id="pendingCount"></p>
                     </div>
                     <div class="flex items-center space-x-2">
                         <div class="w-2 h-2 bg-apple-green rounded-full animate-pulse"></div>
@@ -768,11 +742,13 @@
                             <div class="terminal-content">
                                 <div class="code-line"><span class="code-comment"># 创建或编辑 daemon.json</span></div>
                                 <div class="code-line"><span class="code-keyword">sudo</span> mkdir -p /etc/docker</div>
-                                <div class="code-line"><span class="code-keyword">sudo</span> tee /etc/docker/daemon.json &lt;&lt;-<span class="code-string">'EOF'</span></div>
+                                <div class="code-line"><span class="code-keyword">sudo</span> tee /etc/docker/daemon.json &lt;&lt;<span class="code-string">'EOF'</span></div>
                                 <div class="code-line">{</div>
                                 <div class="code-line">  <span class="code-property">"registry-mirrors"</span>: [</div>
-                                <div class="code-line">    <span class="code-value">"https://docker.mirrors.ustc.edu.cn"</span>,</div>
-                                <div class="code-line">    <span class="code-value">"https://hub-mirror.c.163.com"</span></div>
+                                <div class="code-line" data-mirror-lines>
+                                    <div class="code-line"><span class="code-value">"https://docker.1panel.live"</span>,</div>
+                                    <div class="code-line"><span class="code-value">"https://docker.1ms.run"</span></div>
+                                </div>
                                 <div class="code-line">  ]</div>
                                 <div class="code-line">}</div>
                                 <div class="code-line">EOF</div>
@@ -782,6 +758,9 @@
                                 <div class="code-line"><span class="code-keyword">sudo</span> systemctl restart docker</div>
                             </div>
                         </div>
+                        <p class="text-xs text-apple-gray mt-3" id="guideNote">
+                            以上地址按本次检测结果中响应最快且可用的镜像源自动生成，仅供参考。
+                        </p>
                     </div>
                     <div>
                         <div class="flex items-center space-x-3 mb-4">
@@ -806,11 +785,15 @@
                                 </div>
                                 <div class="flex items-start space-x-3">
                                     <div class="w-6 h-6 bg-apple-blue rounded-full flex items-center justify-center text-white text-xs font-bold">4</div>
-                                    <p class="text-gray-700">在配置文件中添加镜像地址</p>
+                                    <p class="text-gray-700">把下列地址填入 <code class="px-1 py-0.5 bg-white rounded text-xs">registry-mirrors</code> 数组</p>
                                 </div>
                                 <div class="flex items-start space-x-3">
                                     <div class="w-6 h-6 bg-apple-blue rounded-full flex items-center justify-center text-white text-xs font-bold">5</div>
-                                    <p class="text-gray-700">点击 "Apply & Restart"</p>
+                                    <p class="text-gray-700">点击 "Apply &amp; Restart"</p>
+                                </div>
+                                <div id="windowsMirrorList" class="mt-2 space-y-1 pl-9">
+                                    <code class="block text-xs bg-white rounded px-2 py-1 text-gray-800">https://docker.1panel.live</code>
+                                    <code class="block text-xs bg-white rounded px-2 py-1 text-gray-800">https://docker.1ms.run</code>
                                 </div>
                             </div>
                         </div>
@@ -828,9 +811,10 @@
                     <div class="w-8 h-8 bg-gradient-to-br from-apple-blue to-blue-600 rounded-apple flex items-center justify-center" role="img" aria-label="Docker Logo">
                         <i class="fab fa-docker text-white text-sm" aria-hidden="true"></i>
                     </div>
-                    <span class="text-lg font-semibold text-gray-900">Docker 镜像加速监控</span>
+                    <span class="text-lg font-semibold text-gray-900" data-brand-name>Docker 镜像加速监控</span>
                 </div>
-                <p class="text-apple-gray text-sm mb-2">&copy; 2024-2026 Docker 镜像加速监控. 数据仅供参考，请以实际使用为准。</p>
+                <p class="text-apple-gray text-sm mb-2">数据由本服务器实时探测得出，仅供选源参考，请以实际拉取结果为准。</p>
+                <p class="text-apple-gray text-xs mb-2" data-app-meta></p>
                 <div class="flex items-center justify-center space-x-4 text-xs text-apple-gray">
                     <span class="flex items-center space-x-1">
                         <i class="fas fa-heart text-apple-red" aria-hidden="true"></i>

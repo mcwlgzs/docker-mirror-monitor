@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+jobs:
+  php:
+    name: PHP 自检（离线）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: curl, json, mbstring
+          coverage: none
+
+      - name: 语法检查
+        run: |
+          php -l api.php
+          php -l lib.php
+          php -l config.php
+          php -l selftest.php
+
+      - name: 配置校验
+        run: php check_config_errors.php
+
+      - name: 自检（离线，不依赖外网）
+        run: php selftest.php --offline
+
+  frontend:
+    name: 前端渲染冒烟测试
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 用最小 DOM 桩跑 script.js
+        run: node dom_smoke.mjs
+
+  docker:
+    name: Docker 镜像可构建
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 构建镜像
+        run: docker compose build
+
+      - name: 启动并等待健康
+        run: |
+          cp .env.example .env
+          docker compose up -d
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/healthz; then exit 0; fi
+            sleep 2
+          done
+          echo "服务未在 60 秒内就绪"
+          docker compose logs
+          exit 1
+
+      - name: 接口冒烟
+        run: |
+          curl -fsS "http://127.0.0.1:8080/api.php?action=version"
+          curl -fsS "http://127.0.0.1:8080/api.php?action=health"
+          curl -fsS -o /dev/null -w '%{http_code}\n' "http://127.0.0.1:8080/"
+
+      - name: 敏感文件必须不可访问
+        run: |
+          for p in config.php lib.php selftest.php test.html docker-compose.yml .env; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8080/$p")
+            echo "$p -> $code"
+            test "$code" = "404" || exit 1
+          done
+
+      - name: 清理
+        if: always()
+        run: docker compose down -v

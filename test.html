@@ -3,13 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Docker镜像服务测试页面</title>
+    <meta name="robots" content="noindex, nofollow">
+    <title>API 自检面板 - Docker 镜像加速服务监控</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -34,468 +31,349 @@
             text-align: center;
         }
 
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
+        .header h1 { font-size: 2em; margin-bottom: 10px; }
+        .header p { font-size: 1rem; opacity: 0.95; }
+
+        .section { padding: 24px 30px; border-bottom: 1px solid #e9ecef; }
+        .section:last-child { border-bottom: none; }
+
+        .section h2 {
+            font-size: 1.15rem;
+            color: #1f2937;
+            margin-bottom: 14px;
         }
 
-        .header p {
-            font-size: 1.1em;
-            opacity: 0.9;
-        }
+        .hint { font-size: 0.85rem; color: #6b7280; margin-bottom: 14px; line-height: 1.6; }
 
-        .controls {
-            padding: 30px;
-            background: #f8f9fa;
-            border-bottom: 1px solid #e9ecef;
-        }
-
-        .button-group {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
+        .button-group { display: flex; gap: 12px; flex-wrap: wrap; }
 
         .btn {
-            padding: 12px 24px;
+            padding: 10px 20px;
             border: none;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
+            transition: all 0.2s ease;
+            background: #2196F3;
+            color: white;
+        }
+
+        .btn:hover:not(:disabled) { background: #1976D2; transform: translateY(-1px); }
+        .btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+        .btn.secondary { background: #6b7280; }
+        .btn.secondary:hover:not(:disabled) { background: #4b5563; }
+
+        .result { margin-top: 16px; }
+
+        .kv { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 0.9rem; }
+        .kv div { color: #374151; }
+        .kv b { color: #111827; }
+
+        .badge {
             display: inline-block;
+            padding: 2px 9px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+        .ok { background: #dcfce7; color: #15803d; }
+        .warn { background: #fef3c7; color: #b45309; }
+        .bad { background: #fee2e2; color: #b91c1c; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+        th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid #eef0f3; }
+        th { color: #6b7280; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+        td.mono, th.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+        tr:last-child td { border-bottom: none; }
+
+        pre {
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 14px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 0.82rem;
+            line-height: 1.5;
+            margin-top: 12px;
+            max-height: 420px;
         }
 
-        .btn-primary {
-            background: #007bff;
-            color: white;
-        }
-
-        .btn-success {
-            background: #28a745;
-            color: white;
-        }
-
-        .btn-warning {
-            background: #ffc107;
-            color: #212529;
-        }
-
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 40px;
-            font-size: 18px;
-            color: #666;
-        }
-
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .results {
-            padding: 30px;
-        }
-
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .stat-card {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-            border-left: 4px solid #007bff;
-        }
-
-        .stat-number {
-            font-size: 2em;
-            font-weight: bold;
-            color: #007bff;
-        }
-
-        .stat-label {
-            color: #666;
-            margin-top: 5px;
-        }
-
-        .services-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-        }
-
-        .service-card {
-            background: white;
-            border: 1px solid #e9ecef;
-            border-radius: 10px;
-            padding: 20px;
-            transition: all 0.3s ease;
-        }
-
-        .service-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-        }
-
-        .service-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .service-name {
-            font-weight: bold;
-            font-size: 1.1em;
-        }
-
-        .status-badge {
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.85em;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .status-fast {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .status-fair {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .status-slow {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .status-error {
-            background: #f5c6cb;
-            color: #721c24;
-        }
-
-        .service-details {
-            color: #666;
-            font-size: 0.9em;
-        }
-
-        .response-time {
-            font-weight: bold;
-            color: #007bff;
-        }
-
-        .error-message {
-            color: #dc3545;
-            font-style: italic;
-            margin-top: 10px;
-        }
-
-        .timestamp {
-            text-align: center;
-            color: #666;
-            margin-top: 20px;
-            font-size: 0.9em;
-        }
-
-        .debug-info {
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 5px;
-            padding: 10px;
-            margin-top: 10px;
-            font-family: monospace;
-            font-size: 0.8em;
-            white-space: pre-wrap;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-
-        @media (max-width: 768px) {
-            .button-group {
-                flex-direction: column;
-            }
-
-            .services-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .stats {
-                grid-template-columns: repeat(2, 1fr);
-            }
+        .loading { color: #2196F3; font-weight: 600; }
+        .error-box {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 12px 14px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            line-height: 1.6;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🐳 Docker镜像服务测试</h1>
-            <p>使用第三方ping API检测Docker镜像加速服务网络延迟 - 快速(&lt;100ms) | 一般(100-200ms) | 较慢(&gt;200ms)</p>
+            <h1>API 自检面板</h1>
+            <p>用于排查部署问题：健康检查、接口连通性、单源探测明细</p>
         </div>
 
-        <div class="controls">
+        <div class="section">
+            <h2>1. 健康检查</h2>
+            <p class="hint">
+                调用 <code>?action=health</code>。返回 503 表示数据目录不可写或 PHP 缺 curl 扩展，
+                页面上的检测结果将无法正常生成。
+            </p>
             <div class="button-group">
-                <button class="btn btn-primary" onclick="quickCheck()">
-                    ⚡ 快速检测 (前10个)
-                </button>
-                <button class="btn btn-success" onclick="checkAll()">
-                    🔍 完整检测 (所有服务)
-                </button>
-                <button class="btn btn-warning" onclick="testSingle()">
-                    🎯 测试单个服务
-                </button>
-                <button class="btn btn-secondary" onclick="quickCheckDebug()">
-                    🐛 调试模式
-                </button>
+                <button class="btn" id="btnHealth">运行健康检查</button>
             </div>
+            <div class="result" id="healthResult"></div>
         </div>
 
-        <div id="loading" class="loading" style="display: none;">
-            <div class="spinner"></div>
-            <div>正在检测服务，请稍候...</div>
+        <div class="section">
+            <h2>2. 全量探测</h2>
+            <p class="hint">
+                调用 <code>?action=check_all&amp;force=1</code>。这是首页使用的接口，
+                列出每个镜像源的 HTTP 状态码、握手耗时与失败原因。
+            </p>
+            <div class="button-group">
+                <button class="btn" id="btnAll">探测全部镜像源</button>
+                <button class="btn secondary" id="btnQuick">快速探测（前 N 个）</button>
+            </div>
+            <div class="result" id="checkResult"></div>
         </div>
 
-        <div id="results" class="results" style="display: none;">
-            <div id="stats" class="stats"></div>
-            <div id="services" class="services-grid"></div>
-            <div id="timestamp" class="timestamp"></div>
+        <div class="section">
+            <h2>3. 单源探测</h2>
+            <p class="hint">
+                调用 <code>POST ?action=check_service</code>，请求体 <code>{"url":"..."}</code>。
+                只接受服务列表中已登记的地址。
+            </p>
+            <div class="button-group">
+                <select class="btn secondary" id="serviceSelect" style="min-width:220px"></select>
+                <button class="btn" id="btnSingle">探测选中源</button>
+            </div>
+            <div class="result" id="singleResult"></div>
+        </div>
+
+        <div class="section">
+            <h2>4. 原始响应</h2>
+            <p class="hint">最近一次请求的原始 JSON，便于对照文档与上报问题。</p>
+            <pre id="rawOutput">（尚未发起请求）</pre>
         </div>
     </div>
 
     <script>
+        'use strict';
+
         const API_URL = './api.php';
 
-        function showLoading() {
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('results').style.display = 'none';
-            // 禁用所有按钮
-            document.querySelectorAll('.btn').forEach(btn => btn.disabled = true);
+        const $ = (id) => document.getElementById(id);
+
+        /** 记录最近一次原始响应 */
+        function setRaw(data) {
+            $('rawOutput').textContent = JSON.stringify(data, null, 2);
         }
 
-        function hideLoading() {
-            document.getElementById('loading').style.display = 'none';
-            // 启用所有按钮
-            document.querySelectorAll('.btn').forEach(btn => btn.disabled = false);
+        function escapeHtml(value) {
+            return String(value === null || value === undefined ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
         }
 
-        function displayResults(data) {
-            document.getElementById('results').style.display = 'block';
-            
-            // 显示统计信息
-            if (data.stats) {
-                displayStats(data.stats, data.check_time_ms);
-            }
-            
-            // 显示服务列表
-            displayServices(data.data);
-            
-            // 显示时间戳
-            document.getElementById('timestamp').textContent = 
-                `检测时间: ${data.timestamp} ${data.cached ? '(缓存数据)' : ''}`;
-        }
-
-        function displayStats(stats, checkTime) {
-            const statsHtml = `
-                <div class="stat-card">
-                    <div class="stat-number">${stats.total}</div>
-                    <div class="stat-label">总服务数</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">${stats.fast || 0}</div>
-                    <div class="stat-label">快速响应</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">${stats.fair || 0}</div>
-                    <div class="stat-label">一般响应</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">${stats.slow || 0}</div>
-                    <div class="stat-label">响应较慢</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">${stats.error || 0}</div>
-                    <div class="stat-label">连接失败</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">${checkTime}ms</div>
-                    <div class="stat-label">检测耗时</div>
-                </div>
-            `;
-            document.getElementById('stats').innerHTML = statsHtml;
-        }
-
-        function displayServices(services) {
-            const servicesHtml = services.map(service => `
-                <div class="service-card">
-                    <div class="service-header">
-                        <div class="service-name">${service.name}</div>
-                        <div class="status-badge status-${service.status}">${getStatusText(service.status)}</div>
-                    </div>
-                    <div class="service-details">
-                        <div><strong>提供商:</strong> ${service.provider}</div>
-                        <div><strong>地址:</strong> ${service.url}</div>
-                        <div><strong>响应时间:</strong> <span class="response-time">${service.responseTime}ms</span></div>
-                        ${service.method ? `<div><strong>检测方法:</strong> ${service.method}</div>` : ''}
-                        ${service.ip ? `<div><strong>IP地址:</strong> ${service.ip}</div>` : ''}
-                        ${service.server ? `<div><strong>服务器:</strong> ${service.server}</div>` : ''}
-                        ${service.httpCode ? `<div><strong>HTTP状态:</strong> ${service.httpCode}</div>` : ''}
-                        ${service.error ? `<div class="error-message">错误: ${service.error}</div>` : ''}
-                        ${service.debug_ping ? `
-                            <div class="debug-info">
-                                <strong>Ping API调试:</strong><br>
-                                ${JSON.stringify(service.debug_ping, null, 2)}
-                            </div>
-                        ` : ''}
-                        ${service.debug_output ? `
-                            <div class="debug-info">
-                                <strong>命令调试:</strong><br>
-                                命令: ${service.debug_cmd}<br>
-                                返回码: ${service.debug_return_code || 0}<br>
-                                输出: ${JSON.stringify(service.debug_output, null, 2)}
-                            </div>
-                        ` : ''}
-                    </div>
-                </div>
-            `).join('');
-            document.getElementById('services').innerHTML = servicesHtml;
-        }
-
-        function getStatusText(status) {
-            const statusMap = {
-                'fast': '快速',
-                'fair': '一般',
-                'slow': '较慢',
-                'error': '失败'
+        function statusBadge(status) {
+            const map = {
+                fast: ['ok', '快速'],
+                fair: ['ok', '一般'],
+                slow: ['warn', '缓慢'],
+                very_slow: ['warn', '极慢'],
+                error: ['bad', '异常'],
+                pending: ['warn', '待检测'],
             };
-            return statusMap[status] || status;
+            const entry = map[status] || ['warn', status || '未知'];
+            return '<span class="badge ' + entry[0] + '">' + escapeHtml(entry[1]) + '</span>';
         }
 
-        async function quickCheck() {
-            showLoading();
-            try {
-                const response = await fetch(`${API_URL}?action=quick_check`);
-                const data = await response.json();
-                if (data.success) {
-                    displayResults(data);
-                } else {
-                    alert('检测失败: ' + data.error);
-                }
-            } catch (error) {
-                alert('网络错误: ' + error.message);
-            } finally {
-                hideLoading();
+        function busy(button, on) {
+            button.disabled = on;
+            if (on) {
+                button.dataset.label = button.textContent;
+                button.textContent = '请求中...';
+            } else if (button.dataset.label) {
+                button.textContent = button.dataset.label;
             }
         }
 
-        async function quickCheckDebug() {
-            showLoading();
+        function showError(target, message) {
+            target.innerHTML = '<div class="error-box">' +
+                '<b>请求失败：</b>' + escapeHtml(message) +
+                '<br>请确认已通过 web 服务器访问本页面（直接双击打开 html 文件无法调用 api.php），' +
+                '并检查 api.php 是否可访问、PHP 是否启用了 curl 扩展。</div>';
+        }
+
+        async function apiGet(query) {
+            const response = await fetch(API_URL + query);
+            const text = await response.text();
+            let payload = null;
             try {
-                const response = await fetch(`${API_URL}?action=quick_check&debug=1`);
-                const data = await response.json();
-                if (data.success) {
-                    displayResults(data);
-                } else {
-                    alert('检测失败: ' + data.error);
-                    if (data.debug) {
-                        console.log('调试信息:', data.debug);
-                    }
-                }
+                payload = text ? JSON.parse(text) : null;
+            } catch (e) {
+                throw new Error('后端返回了非 JSON 内容（HTTP ' + response.status + '）：' + text.slice(0, 200));
+            }
+            setRaw(payload);
+            if (!response.ok && !(payload && payload.success === false)) {
+                throw new Error('HTTP ' + response.status);
+            }
+            return payload;
+        }
+
+        // ---------------- 1. 健康检查 ----------------
+        $('btnHealth').addEventListener('click', async function () {
+            const target = $('healthResult');
+            busy(this, true);
+            try {
+                const data = await apiGet('?action=health&pretty=1');
+                const checks = (data && data.checks) || {};
+                const rows = Object.keys(checks).map(function (key) {
+                    const value = checks[key];
+                    const ok = value !== false && value !== null;
+                    return '<div>' + escapeHtml(key) + ': <b>' +
+                        escapeHtml(value === true ? 'true' : value === false ? 'false' : value) +
+                        '</b> ' + (ok ? '' : '<span class="badge bad">异常</span>') + '</div>';
+                }).join('');
+
+                target.innerHTML =
+                    '<div class="kv">' +
+                    '<div>状态: ' + (data.status === 'healthy'
+                        ? '<span class="badge ok">healthy</span>'
+                        : '<span class="badge bad">' + escapeHtml(data.status) + '</span>') + '</div>' +
+                    '<div>版本: <b>' + escapeHtml(data.version) + '</b></div>' +
+                    '</div>' +
+                    '<div class="kv" style="margin-top:12px">' + rows + '</div>' +
+                    ((data.errors && data.errors.length)
+                        ? '<div class="error-box" style="margin-top:12px">' +
+                          data.errors.map(escapeHtml).join('<br>') + '</div>'
+                        : '');
             } catch (error) {
-                alert('网络错误: ' + error.message);
+                showError(target, error.message);
             } finally {
-                hideLoading();
+                busy(this, false);
+            }
+        });
+
+        // ---------------- 2. 批量探测 ----------------
+        function renderResults(data) {
+            const rows = (data.data || []).map(function (item) {
+                return '<tr>' +
+                    '<td>' + escapeHtml(item.name) + '</td>' +
+                    '<td class="mono">' + escapeHtml(item.url) + '</td>' +
+                    '<td class="mono">' + (item.httpCode > 0 ? item.httpCode : '-') + '</td>' +
+                    '<td class="mono">' + (item.responseTime > 0 ? item.responseTime + 'ms' : '-') + '</td>' +
+                    '<td>' + statusBadge(item.status) + '</td>' +
+                    '<td>' + escapeHtml(item.error || '') + '</td>' +
+                    '</tr>';
+            }).join('');
+
+            const stats = data.stats || {};
+
+            return '<div class="kv">' +
+                '<div>引擎: <b>' + escapeHtml(data.engine || '-') + '</b></div>' +
+                '<div>范围: <b>' + escapeHtml(data.scope || '-') + '</b></div>' +
+                '<div>耗时: <b>' + escapeHtml(data.check_time_ms) + 'ms</b></div>' +
+                '<div>可用率: <b>' + escapeHtml(stats.availability) + '%</b> (' +
+                    escapeHtml(stats.available) + '/' + escapeHtml(stats.total) + ')</div>' +
+                '<div>缓存: <b>' + (data.cached ? '命中（' + escapeHtml(data.cache_age) + 's 前）' : '未命中') + '</b></div>' +
+                '</div>' +
+                '<div style="margin-top:14px;overflow-x:auto"><table>' +
+                '<thead><tr><th>名称</th><th>地址</th><th>HTTP</th><th>耗时</th><th>状态</th><th>说明</th></tr></thead>' +
+                '<tbody>' + rows + '</tbody></table></div>';
+        }
+
+        $('btnAll').addEventListener('click', async function () {
+            const target = $('checkResult');
+            busy(this, true);
+            try {
+                target.innerHTML = '<p class="loading">正在并发探测全部镜像源，最长约 8 秒...</p>';
+                const data = await apiGet('?action=check_all&force=1');
+                if (!data.success) throw new Error(data.error || '接口返回失败');
+                target.innerHTML = renderResults(data);
+            } catch (error) {
+                showError(target, error.message);
+            } finally {
+                busy(this, false);
+            }
+        });
+
+        $('btnQuick').addEventListener('click', async function () {
+            const target = $('checkResult');
+            busy(this, true);
+            try {
+                target.innerHTML = '<p class="loading">正在快速探测...</p>';
+                const data = await apiGet('?action=quick_check');
+                if (!data.success) throw new Error(data.error || '接口返回失败');
+                target.innerHTML = renderResults(data) +
+                    '<p class="hint" style="margin-top:12px">注意：quick_check 只探测前 N 个源，' +
+                    '其余源在首页会显示为「待检测」而不是异常。</p>';
+            } catch (error) {
+                showError(target, error.message);
+            } finally {
+                busy(this, false);
+            }
+        });
+
+        // ---------------- 3. 单源探测 ----------------
+        async function loadServiceOptions() {
+            const select = $('serviceSelect');
+            try {
+                const data = await apiGet('?action=get_services');
+                if (!data.success) throw new Error(data.error || '无法获取服务列表');
+                select.innerHTML = (data.data || []).map(function (service) {
+                    return '<option value="' + escapeHtml(service.url) + '">' +
+                        escapeHtml(service.name) + ' — ' + escapeHtml(service.url) + '</option>';
+                }).join('');
+                select.disabled = false;
+                $('btnSingle').disabled = false;
+            } catch (error) {
+                select.innerHTML = '<option>服务列表加载失败</option>';
+                select.disabled = true;
+                $('btnSingle').disabled = true;
             }
         }
 
-        async function checkAll() {
-            showLoading();
-            try {
-                const response = await fetch(`${API_URL}?action=check_all`);
-                const data = await response.json();
-                if (data.success) {
-                    displayResults(data);
-                } else {
-                    alert('检测失败: ' + data.error);
-                }
-            } catch (error) {
-                alert('网络错误: ' + error.message);
-            } finally {
-                hideLoading();
-            }
-        }
-
-        async function testSingle() {
-            const url = prompt('请输入要测试的Docker镜像服务URL:', 'https://docker.mirrors.ustc.edu.cn');
+        $('btnSingle').addEventListener('click', async function () {
+            const target = $('singleResult');
+            const url = $('serviceSelect').value;
             if (!url) return;
 
-            showLoading();
+            busy(this, true);
             try {
-                const response = await fetch(`${API_URL}?action=check_service`, {
+                const response = await fetch(API_URL + '?action=check_service', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ url: url })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url }),
                 });
-                const data = await response.json();
-                if (data.success) {
-                    // 显示单个服务结果
-                    displayResults({
-                        data: [data.data],
-                        stats: { total: 1, [data.data.status]: 1 },
-                        timestamp: data.data.timestamp,
-                        check_time_ms: data.data.responseTime
-                    });
-                } else {
-                    alert('检测失败: ' + data.error);
-                }
-            } catch (error) {
-                alert('网络错误: ' + error.message);
-            } finally {
-                hideLoading();
-            }
-        }
+                const payload = await response.json();
+                setRaw(payload);
 
-        // 页面加载完成后自动执行快速检测
-        window.addEventListener('load', function() {
-            setTimeout(quickCheck, 500);
+                if (!payload.success) throw new Error(payload.error || '探测失败');
+                target.innerHTML = renderResults({
+                    data: [payload.data],
+                    engine: payload.data.method,
+                    scope: 'single',
+                    check_time_ms: payload.data.responseTime,
+                    stats: { available: payload.data.status !== 'error' ? 1 : 0, total: 1,
+                             availability: payload.data.status !== 'error' ? 100 : 0 },
+                    cached: false,
+                });
+            } catch (error) {
+                showError(target, error.message);
+            } finally {
+                busy(this, false);
+            }
         });
+
+        loadServiceOptions();
     </script>
 </body>
 </html>

@@ -1,0 +1,21 @@
+# 运行时数据：缓存与日志，不属于源码
+data/
+.data/
+
+# 本地环境变量（含密钥/站点配置），只提交 .env.example
+.env
+.env.local
+.env.*.local
+
+# 日志与临时文件
+*.log
+*.tmp
+*.bak
+*~
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
