@@ -23,6 +23,8 @@ LICENSE
 pretty_json.php
 check_config_errors.php
 check_service_shape.php
+mirror_candidates.php
+dom_smoke.mjs
 test.html
 
 # 各种日志与临时文件

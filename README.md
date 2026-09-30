@@ -113,6 +113,7 @@ docker-mirror-monitor/
 ├── pretty_json.php             # 开发辅助：格式化 API 响应
 ├── check_config_errors.php     # 开发辅助：验证配置校验逻辑
 ├── check_service_shape.php     # 开发辅助：验证单源探测返回结构
+├── mirror_candidates.php       # 开发辅助：真实拉取验证候选镜像源是否可用
 ├── docker-compose.yml          # 一键部署
 ├── .env.example                # 环境变量示例
 ├── .github/workflows/ci.yml    # CI：PHP 自检 + 前端冒烟 + 镜像构建
@@ -153,14 +154,14 @@ docker-mirror-monitor/
   "scope": "all",
   "check_time_ms": 1865,
   "cached": false,
-  "stats": { "total": 14, "fast": 5, "fair": 0, "slow": 3, "very_slow": 0, "error": 6, "available": 8, "availability": 57.1 },
+  "stats": { "total": 11, "fast": 3, "fair": 1, "slow": 2, "very_slow": 1, "error": 4, "available": 7, "availability": 63.6 },
   "data": [
     {
-      "name": "阿里云镜像",
-      "url": "https://registry.cn-hangzhou.aliyuncs.com",
-      "probeUrl": "https://registry.cn-hangzhou.aliyuncs.com/v2/",
+      "name": "DaoCloud 镜像",
+      "url": "https://docker.m.daocloud.io",
+      "probeUrl": "https://docker.m.daocloud.io/v2/",
       "httpCode": 401,
-      "responseTime": 302,
+      "responseTime": 95,
       "status": "fast",
       "reachable": true,
       "authRequired": true,
@@ -170,6 +171,11 @@ docker-mirror-monitor/
   ]
 }
 ```
+
+> 字段说明：`data` 是服务数组，**每一项就是一行结果**（不是嵌套结构）。
+> `status` 只会是 `fast` / `fair` / `slow` / `very_slow` / `error` / `pending` 之一。
+> `check_all` 等接口返回的顶层字段为
+> `success, data, stats, cached, check_time_ms, engine, scope, timestamp, cache_time, cache_age, cache_ttl`。
 
 ## 状态说明
 
@@ -210,12 +216,46 @@ docker-mirror-monitor/
 
 探测结果**只代表部署本项目的服务器所处的网络**。典型例子：
 
-- `docker.mirrors.ustc.edu.cn`（中科大）、`mirror.ccs.tencentyun.com`（腾讯云）
-  在公共 DNS 下无法解析。腾讯云加速地址仅限**腾讯云内网**使用，因此该项目在
-  配置里标记为 `region=vpc`，并在页面上明确提示，避免把「本地不可用」误报成故障。
-- 部分镜像源对非浏览器 User-Agent 返回 403，本身服务正常。
+- `mirror.ccs.tencentyun.com`（腾讯云）在公共 DNS 下无法解析——腾讯云加速地址
+  仅限**腾讯云内网**使用，因此配置里标记为 `region=vpc`，页面会明确提示，
+  避免把「本地不可用」误报成故障。
+- 如果你的服务器在境外，部分国内镜像源会探测失败，这属于预期行为。
 
-如果你的服务器在境外，部分国内镜像源会探测失败，这属于预期行为。
+### 镜像源会失效：这份列表是怎么来的
+
+公共加速站的生命周期很短，`config.php` 里的默认列表在 **2026-09** 用
+[mirror_candidates.php](mirror_candidates.php) 逐个做过**真实拉取**验证，而不只是看
+`/v2/` 握手：
+
+```
+握手 GET {url}/v2/  →  401 就按 WWW-Authenticate 换 token
+                    →  拉取 /v2/library/alpine/manifests/latest
+                    →  返回 200 且是 manifest JSON 才算「可用」
+```
+
+四步全过才算合格。用同一个脚本可以随时重新体检：
+
+```bash
+php mirror_candidates.php                              # 跑全量候选
+php mirror_candidates.php --only=<url1,url2> --retry=3  # 只测指定的几个，失败重试
+php mirror_candidates.php --json                        # 机器可读输出
+```
+
+**为什么必须做真实拉取**：只握手会把假可用当成可用。例如
+`registry.cn-hangzhou.aliyuncs.com` 的 `/v2/` 返回 401，但它并不是 Docker Hub
+加速器，换不到可用的 token；`docker.nju.edu.cn` 返回 403，同样拉不动镜像。
+早期的检测逻辑把 200/401/403 一律算「可用」，于是页面上把这两个源显示成正常，
+用户照着配置指南去改 `daemon.json` 却发现 `docker pull` 依然失败——这正是
+「接口不能用」的主要来源。现在默认列表里已经没有这类源。
+
+已被移除的失效地址（如仍需要请自行通过 `DMM_SERVICES_JSON` 加回）：
+中科大 USTC、上海交大、南京大学、网易 `hub-mirror.c.163.com`、耗子面板
+`hub.rat.dev`、科技 lion、开放原子 AtomHub、DockerPull、`hub.docker.com`
+（它是网站不是 Registry 端点，官方源应为 `registry-1.docker.io`）。
+
+> 云厂商的专属加速器（阿里云 `https://<你的编码>.mirror.aliyuncs.com` 等）是
+> 控制台按账号下发的，**只对同一个云账号/同云内网生效**，所以不写进默认列表。
+> 部署在对应云上时，用 `DMM_SERVICES_JSON` 把自己的地址加进来即可。
 
 ## 添加或修改镜像源
 

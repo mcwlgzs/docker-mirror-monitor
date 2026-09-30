@@ -82,97 +82,93 @@ $logDir = rtrim(dmm_env('DMM_LOG_DIR', $dataDir . 'logs'), "/\\") . '/';
 //   note        附加说明（前端 tooltip）
 //
 // 注意：探针必须由「本监控服务器」直接发起，这样才能反映真实网络路径。
+//
+// ⚠️ 关于镜像源的可用性
+//   公共加速站生命周期很短，下面这份列表在 2026-09 由 mirror_candidates.php
+//   逐个做过「真实拉取」验证（握手 → 取 token → 拉取 library/alpine:latest 的
+//   manifest，四步全部通过才算可用）。若某个源又失效了，请重新跑：
+//       php mirror_candidates.php            # 全量候选
+//       php mirror_candidates.php --only=<url1,url2> --retry=3
+//   然后把通过验证的地址补进来，把失效的删掉。
+//
+//   不要收录以下类型的地址：
+//     * hub.docker.com            —— 网站，不是 Registry 端点
+//     * registry.cn-hangzhou.aliyuncs.com 等云厂商「自家」Registry
+//       （/v2/ 返回 401 但没有可用于 Docker Hub 的 token，不是加速器）
+//     * 已下线的镜像站（中科大 USTC、上海交大、南京大学、网易 163 均已停服）
+//
+//   阿里云等厂商的加速器是控制台按账号下发的专属地址，形如
+//   https://<你的编码>.mirror.aliyuncs.com，且仅同云账号可用；请通过
+//   DMM_SERVICES_JSON 自行加入，不要写死在默认列表里。
 
 $services = [
     [
-        'name' => '中科大镜像站',
-        'url' => 'https://docker.mirrors.ustc.edu.cn',
-        'provider' => 'USTC',
-        'description' => '中国科学技术大学开源软件镜像站',
-    ],
-    [
-        'name' => '阿里云镜像',
-        'url' => 'https://registry.cn-hangzhou.aliyuncs.com',
-        'provider' => '阿里云',
-        'description' => '阿里云容器镜像服务',
-    ],
-    [
-        'name' => '腾讯云镜像',
-        'url' => 'https://mirror.ccs.tencentyun.com',
-        'provider' => '腾讯云',
-        'description' => '腾讯云容器镜像服务（仅腾讯云内网）',
-        'region' => 'vpc',
-        'note' => '仅腾讯云服务器内网可访问，公网访问必然失败',
-    ],
-    [
-        'name' => '华为云镜像',
-        'url' => 'https://swr.cn-north-1.myhuaweicloud.com',
-        'provider' => '华为云',
-        'description' => '华为云容器镜像服务',
-    ],
-    [
-        'name' => '上海交大镜像',
-        'url' => 'https://docker.mirrors.sjtug.sjtu.edu.cn',
-        'provider' => '上海交大',
-        'description' => '上海交通大学软件源镜像服务',
-    ],
-    [
-        'name' => '南京大学镜像',
-        'url' => 'https://docker.nju.edu.cn',
-        'provider' => '南京大学',
-        'description' => '南京大学开源镜像站',
-        'probe' => 'https://docker.nju.edu.cn/',
+        'name' => 'DaoCloud 镜像',
+        'url' => 'https://docker.m.daocloud.io',
+        'provider' => 'DaoCloud',
+        'description' => 'DaoCloud 公共镜像代理（实测响应最快）',
     ],
     [
         'name' => '毫秒镜像',
         'url' => 'https://docker.1ms.run',
         'provider' => '木雷坞',
-        'description' => '毫秒镜像 CloudFlare 加速',
+        'description' => '毫秒镜像，公益公共加速源',
+    ],
+    [
+        'name' => '华为云 SWR',
+        'url' => 'https://swr.cn-north-1.myhuaweicloud.com',
+        'provider' => '华为云',
+        'description' => '华为云容器镜像服务公共只读地址',
+    ],
+    [
+        'name' => 'Nat.tf 镜像',
+        'url' => 'https://hub1.nat.tf',
+        'provider' => 'Nat.tf',
+        'description' => 'Nat.tf 公共镜像代理（匿名可拉取）',
+    ],
+    [
+        'name' => '轩辕镜像',
+        'url' => 'https://docker.xuanyuan.me',
+        'provider' => '轩辕镜像',
+        'description' => '轩辕镜像免费版（匿名可拉取，仅同步 Docker Hub）',
+    ],
+    [
+        'name' => '简行镜像',
+        'url' => 'https://docker.jiaxin.site',
+        'provider' => '简行镜像',
+        'description' => '简行镜像公共加速（匿名可拉取）',
+    ],
+    [
+        'name' => 'HubFast 镜像',
+        'url' => 'https://free.hubfast.cn',
+        'provider' => 'HubFast',
+        'description' => 'HubFast 免费镜像代理（匿名可拉取）',
     ],
     [
         'name' => '1Panel 镜像',
         'url' => 'https://docker.1panel.live',
         'provider' => '1Panel',
-        'description' => '1Panel CloudFlare 镜像源',
-    ],
-    [
-        'name' => '耗子面板',
-        'url' => 'https://hub.rat.dev',
-        'provider' => '耗子面板',
-        'description' => '耗子面板 CloudFlare 镜像（跳转至 1ms.run）',
-        'probe' => 'https://docker.1ms.run/v2/',
+        'description' => '1Panel 官方公共镜像源',
     ],
     [
         'name' => 'DockerProxy',
         'url' => 'https://dockerproxy.net',
         'provider' => 'DockerProxy',
-        'description' => 'DockerProxy Oracle CDN',
+        'description' => 'DockerProxy 公共代理（匿名可拉取）',
     ],
     [
-        'name' => '科技 lion',
-        'url' => 'https://docker.kejilion.pro',
-        'provider' => '科技lion',
-        'description' => '自媒体 UP 主 Nginx 镜像',
-    ],
-    [
-        'name' => '开放原子',
-        'url' => 'https://atomhub.openatom.cn',
-        'provider' => '开放原子',
-        'description' => '开放原子开源基金会镜像（已迁移至 hub.atomgit.com）',
-        'probe' => 'https://hub.atomgit.com/v2/',
-    ],
-    [
-        'name' => 'DockerPull',
-        'url' => 'https://dockerpull.com',
-        'provider' => 'DockerPull',
-        'description' => 'Docker 镜像代理服务',
+        'name' => '腾讯云镜像',
+        'url' => 'https://mirror.ccs.tencentyun.com',
+        'provider' => '腾讯云',
+        'description' => '腾讯云容器镜像服务',
+        'region' => 'vpc',
+        'note' => '仅腾讯云服务器内网可访问，公网访问必然失败',
     ],
     [
         'name' => 'Docker Hub 官方',
-        'url' => 'https://hub.docker.com',
+        'url' => 'https://registry-1.docker.io',
         'provider' => 'Docker官方',
-        'description' => 'Docker Hub 官方源（国内直连不稳定）',
-        'probe' => 'https://registry-1.docker.io/v2/',
+        'description' => 'Docker Hub 官方源（国内直连不稳定，作为基线对照）',
     ],
 ];
 
@@ -253,7 +249,7 @@ return [
     // 探测配置（秒 / 毫秒）
     'probe' => [
         // 并发探测全部服务，单个请求总超时。
-        // 14 个探针并发执行，因此整体耗时约等于最慢的那一个；
+        // 全部探针并发执行，因此整体耗时约等于最慢的那一个；
         // 8s 可在"容忍跨境慢站点"与"不拖垮接口响应"之间取得平衡。
         'timeout' => dmm_env('DMM_PROBE_TIMEOUT', 8),
         // 建立连接超时

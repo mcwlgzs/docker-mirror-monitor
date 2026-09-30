@@ -14,7 +14,7 @@ if (PHP_SAPI !== 'cli') {
 
 $base = rtrim($argv[1] ?? 'http://127.0.0.1:8080', '/');
 
-$body = json_encode(['url' => 'https://registry.cn-hangzhou.aliyuncs.com']);
+$body = json_encode(['url' => 'https://docker.m.daocloud.io']);
 
 $ch = curl_init($base . '/api.php?action=check_service');
 curl_setopt_array($ch, [

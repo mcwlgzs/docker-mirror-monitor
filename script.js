@@ -733,6 +733,11 @@ function getProviderIcon(provider) {
         '科技lion': { icon: 'fas fa-video', bgClass: 'bg-orange-100', textClass: 'text-orange-600' },
         '开放原子': { icon: 'fas fa-atom', bgClass: 'bg-purple-100', textClass: 'text-purple-600' },
         'DockerPull': { icon: 'fas fa-download', bgClass: 'bg-cyan-100', textClass: 'text-cyan-600' },
+        'DaoCloud': { icon: 'fas fa-cube', bgClass: 'bg-sky-100', textClass: 'text-sky-600' },
+        'Nat.tf': { icon: 'fas fa-globe', bgClass: 'bg-teal-100', textClass: 'text-teal-600' },
+        '轩辕镜像': { icon: 'fas fa-shield-alt', bgClass: 'bg-purple-100', textClass: 'text-purple-600' },
+        '简行镜像': { icon: 'fas fa-feather-alt', bgClass: 'bg-emerald-100', textClass: 'text-emerald-600' },
+        'HubFast': { icon: 'fas fa-tachometer-alt', bgClass: 'bg-amber-100', textClass: 'text-amber-600' },
     };
 
     const known = Object.prototype.hasOwnProperty.call(iconMap, provider);
